@@ -84,6 +84,17 @@ greenhouse:
     slug: vedantu
   - company: Lenskart
     slug: lenskart
+  # Global remote — confirmed EOR/contractor-friendly via market research
+  - company: Automattic
+    slug: automattic
+  - company: Zapier
+    slug: zapier
+  - company: Canonical
+    slug: canonical
+  - company: Elastic
+    slug: elastic
+  - company: SigNoz
+    slug: signoz
 
 lever:
   # Global remote
@@ -140,9 +151,26 @@ ashby:
     slug: highlight
   - company: Lago
     slug: lago
+  - company: Composio
+    slug: composio
+  - company: Firecrawl (Mendable)
+    slug: mendable
+  - company: Portkey AI
+    slug: portkey
+  - company: ElevenLabs
+    slug: elevenlabs
+  - company: Pipecat Cloud (Daily.co)
+    slug: daily
 
   # Indian tech
   - company: Setu
     slug: setu
   - company: Hyperface
     slug: hyperface
+  - company: Sarvam AI
+    slug: sarvam-ai
+  - company: Lyzr AI
+    slug: lyzr
+  - company: Bolna AI
+    slug: bolna
+

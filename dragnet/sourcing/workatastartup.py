@@ -27,10 +27,26 @@ RELEVANT_LOCATIONS = {
 
 
 async def fetch_postings() -> list[dict]:
+    # workatastartup.com returns 406 for unauthenticated requests (requires session cookie).
+    # YC companies are covered by the HN "Who is Hiring" scraper — use that instead.
+    # To use this: set WAS_SESSION_COOKIE in .env after logging in at workatastartup.com.
+    from dragnet.config import settings
+    session_cookie = getattr(settings, "was_session_cookie", "") or ""
+    if not session_cookie:
+        logger.info("WorkAtAStartup skipped — no session cookie. YC companies covered by HN scraper.")
+        return []
+
     try:
         async with httpx.AsyncClient(
             timeout=30.0,
-            headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
+            headers={
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": "https://www.workatastartup.com/companies",
+                "Cookie": session_cookie,
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            },
+            follow_redirects=True,
         ) as client:
             resp = await client.get(COMPANIES_URL)
             resp.raise_for_status()

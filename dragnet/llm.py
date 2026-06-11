@@ -4,6 +4,7 @@ Ollama runs an OpenAI-compatible API at localhost:11434.
 Uses qwen3:14b for all tasks (classification + tailoring).
 """
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -15,6 +16,9 @@ from dragnet.config import settings
 logger = logging.getLogger(__name__)
 
 OLLAMA_BASE = "http://localhost:11434/v1"
+
+# Ollama on CPU can only run one inference at a time — serialize all calls.
+_ollama_sem = asyncio.Semaphore(1)
 
 
 @dataclass
@@ -53,21 +57,22 @@ async def complete(
     if json_mode:
         payload["format"] = "json"
 
-    try:
-        async with httpx.AsyncClient(base_url=OLLAMA_BASE, timeout=120.0) as client:
-            resp = await client.post("/chat/completions", json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-            text = data["choices"][0]["message"]["content"]
-            return LLMResponse(content=text.strip(), model=model)
-    except httpx.ConnectError:
-        raise RuntimeError(
-            "Ollama not running. Start with: ollama serve\n"
-            f"Then pull model: ollama pull {model}"
-        )
-    except Exception as e:
-        logger.error(f"LLM call failed: {e}")
-        raise
+    async with _ollama_sem:
+        try:
+            async with httpx.AsyncClient(base_url=OLLAMA_BASE, timeout=300.0) as client:
+                resp = await client.post("/chat/completions", json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                text = data["choices"][0]["message"]["content"]
+                return LLMResponse(content=text.strip(), model=model)
+        except httpx.ConnectError:
+            raise RuntimeError(
+                "Ollama not running. Start with: ollama serve\n"
+                f"Then pull model: ollama pull {model}"
+            )
+        except Exception as e:
+            logger.error(f"LLM call failed: {type(e).__name__}: {e}")
+            raise
 
 
 async def complete_json(system: str, user: str, max_tokens: int = 1024) -> dict:

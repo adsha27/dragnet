@@ -26,18 +26,18 @@ async def main():
     parser.add_argument(
         "--source",
         default="all",
-        help="Comma-separated sources: linkedin,naukri,remotive,himalayas,workatastartup",
+        help="Comma-separated sources: linkedin,naukri,remotive,himalayas,workatastartup,remoteok,hn",
     )
     args = parser.parse_args()
 
     if args.linkedin_only:
         sources = {"linkedin"}
     elif args.source == "all":
-        sources = {"linkedin", "naukri", "remotive", "himalayas", "workatastartup", "remoteok"}
+        sources = {"linkedin", "naukri", "remotive", "himalayas", "workatastartup", "remoteok", "hn"}
     else:
         sources = set(args.source.split(","))
 
-    from dragnet.sourcing import linkedin, naukri, remotive, himalayas, workatastartup, remoteok
+    from dragnet.sourcing import linkedin, naukri, remotive, himalayas, workatastartup, remoteok, hn
 
     all_jobs: list[dict] = []
 
@@ -70,6 +70,15 @@ async def main():
         ro_jobs = await remoteok.fetch_postings()
         print(f"  {len(ro_jobs)} jobs")
         all_jobs.extend(ro_jobs)
+
+    if "hn" in sources:
+        print("── HN Who is Hiring ─────────────────────────")
+        try:
+            hn_jobs = await hn.fetch_postings(month_lookback=2)
+            print(f"  {len(hn_jobs)} jobs")
+            all_jobs.extend(hn_jobs)
+        except Exception as e:
+            print(f"  HN skipped: {e}")
 
     if "naukri" in sources:
         print("── Naukri ───────────────────────────────────")
