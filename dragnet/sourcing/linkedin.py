@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 GUEST_SEARCH = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 JOB_DETAIL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
 PAGE_SIZE = 10
-MAX_PAGES = 5
-DELAY_BETWEEN_REQUESTS = 2.0
+MAX_PAGES = 10
+DELAY_BETWEEN_REQUESTS = 1.5
 
 HEADERS = {
     "User-Agent": (
@@ -40,14 +40,49 @@ HEADERS = {
 }
 
 INDIA_QUERIES = [
+    # Role × location matrix — covers the full relevant search space
+    # Broad India sweep
     ("backend engineer", "India"),
-    ("software engineer golang", "India"),
-    ("software engineer python", "India"),
+    ("software engineer", "India"),
+    ("software developer", "India"),
+    ("backend developer", "India"),
+    ("api engineer", "India"),
+    ("platform engineer", "India"),
+    ("sde", "India"),
+    ("sde-2", "India"),
+    ("sde 2", "India"),
+    # Language-specific — high signal for your stack
+    ("golang engineer", "India"),
+    ("go developer", "India"),
+    ("python backend engineer", "India"),
+    ("fastapi engineer", "India"),
+    # AI / LLM — fast-growing, relevant
     ("ai engineer", "India"),
     ("llm engineer", "India"),
-    ("platform engineer", "India"),
+    ("ml engineer", "India"),
+    ("machine learning engineer", "India"),
+    ("ai backend engineer", "India"),
+    ("generative ai engineer", "India"),
+    # City-level — different postings surface per city
+    ("backend engineer", "Bangalore, Karnataka, India"),
+    ("software engineer", "Bangalore, Karnataka, India"),
     ("backend developer", "Bangalore, Karnataka, India"),
+    ("golang", "Bangalore, Karnataka, India"),
+    ("python developer", "Bangalore, Karnataka, India"),
+    ("ai engineer", "Bangalore, Karnataka, India"),
+    ("backend engineer", "Delhi, India"),
     ("software engineer", "Delhi, India"),
+    ("backend engineer", "Gurugram, Haryana, India"),
+    ("software engineer", "Gurugram, Haryana, India"),
+    ("backend engineer", "Mumbai, Maharashtra, India"),
+    ("software engineer", "Hyderabad, Telangana, India"),
+    ("backend engineer", "Hyderabad, Telangana, India"),
+    ("backend engineer", "Pune, Maharashtra, India"),
+    ("software engineer", "Noida, Uttar Pradesh, India"),
+    # Remote / global roles that hire India
+    ("backend engineer", "Remote"),
+    ("software engineer", "Remote"),
+    ("backend engineer", "Worldwide"),
 ]
 
 
