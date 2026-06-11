@@ -205,7 +205,8 @@ class OutreachEmail(Base):
     __tablename__ = "outreach_emails"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    contact_id: Mapped[int] = mapped_column(ForeignKey("founder_contacts.id"), nullable=False)
+    contact_id: Mapped[int | None] = mapped_column(ForeignKey("founder_contacts.id"), nullable=True)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False, default="email")  # "email" | "linkedin"
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     gmail_message_id: Mapped[str | None] = mapped_column(String(255))
@@ -213,4 +214,4 @@ class OutreachEmail(Base):
     replied_at: Mapped[datetime | None] = mapped_column(DateTime)
     reply_text: Mapped[str | None] = mapped_column(Text)
 
-    contact: Mapped[FounderContact] = relationship(back_populates="outreach_emails")
+    contact: Mapped[FounderContact | None] = relationship(back_populates="outreach_emails")

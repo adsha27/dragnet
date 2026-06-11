@@ -127,6 +127,18 @@ def pre_filter(title: str, text: str) -> tuple[bool, str | None]:
     if any(p in text_lower for p in us_only_phrases):
         return False, "us_only"
 
+    # Hard reject freelance / part-time / hourly / per-project
+    freelance_phrases = [
+        "freelance", "part-time", "part time", "hourly rate", "per hour",
+        "per project", "gig ", "contract-to-hire", "1099", "independent contractor",
+        "as-needed basis", "occasional work",
+    ]
+    if any(p in text_lower for p in freelance_phrases):
+        # Allow "contractor" only when paired with EOR signals (full-time contractor via EOR)
+        has_eor = any(p in text_lower for p in ["deel", "remote.com", "oyster", "rippling", "employer of record"])
+        if not has_eor:
+            return False, "freelance"
+
     return True, None
 
 

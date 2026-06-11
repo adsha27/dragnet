@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     applicant_github: str = "https://github.com/adsha27"
     applicant_location: str = "Delhi, India"
 
+    # Reddit OAuth (register a free app at reddit.com/prefs/apps → script type)
+    reddit_client_id: str = ""
+    reddit_client_secret: str = ""
+
     # Limits
     max_concurrent_sessions: int = 3
     max_applications_per_company_per_day: int = 1
