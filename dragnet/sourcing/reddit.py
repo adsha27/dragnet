@@ -1,228 +1,228 @@
 """
 Reddit referral thread scraper.
-Uses Reddit's public JSON API (no auth, append .json to any URL).
 
-Targets weekly referral megathreads on:
-- r/developersIndia
-- r/cscareerquestions
-- r/IndiaTechCommunity
+Two modes (tried in order):
+1. OAuth API — fastest, if REDDIT_CLIENT_ID + REDDIT_CLIENT_SECRET are in .env
+2. Stagehand/Browserbase — browser-based fallback, needs BROWSERBASE_API_KEY
 
-Extracts structured referral offers: company, role, who to contact (DM them on Reddit).
-Output is a list of referral opportunities — not job postings, but direct human contacts.
+Targets weekly referral megathreads on r/developersIndia and r/cscareerquestions.
+Extracts structured offers: company, role, Reddit username to DM.
 """
 
 import asyncio
 import hashlib
 import logging
 import re
-from datetime import datetime
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "dragnet-job-hunter/1.0 (personal job search tool)"
-BASE_HEADERS = {
-    "User-Agent": USER_AGENT,
-    "Accept": "application/json",
-}
+USER_AGENT = "dragnet/1.0 (personal use)"
 OAUTH_TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
-OAUTH_API_BASE = "https://oauth.reddit.com"
+OAUTH_BASE = "https://oauth.reddit.com"
 
-SUBREDDITS = [
-    {
-        "sub": "developersIndia",
-        "search_query": "referral",
-        "type": "search",
-    },
-    {
-        "sub": "developersIndia",
-        "search_query": "referral megathread",
-        "type": "search",
-    },
-    {
-        "sub": "cscareerquestions",
-        "search_query": "referral megathread",
-        "type": "search",
-    },
-    {
-        "sub": "IndiaTechCommunity",
-        "search_query": "referral",
-        "type": "search",
-    },
+SEARCH_TARGETS = [
+    ("developersIndia", "referral megathread"),
+    ("developersIndia", "referral"),
+    ("cscareerquestions", "referral megathread"),
+    ("IndiaTechCommunity", "referral"),
+]
+
+BROWSER_SEARCH_URLS = [
+    "https://www.reddit.com/r/developersIndia/search/?q=referral+megathread&sort=new&restrict_sr=1&t=month",
+    "https://www.reddit.com/r/cscareerquestions/search/?q=referral+megathread&sort=new&restrict_sr=1&t=month",
+    "https://www.reddit.com/r/IndiaTechCommunity/search/?q=referral&sort=new&restrict_sr=1&t=month",
 ]
 
 TECH_COMPANIES = {
     "google", "microsoft", "amazon", "meta", "apple", "netflix", "uber", "stripe",
     "razorpay", "cred", "swiggy", "zomato", "meesho", "phonepe", "paytm", "flipkart",
     "myntra", "groww", "zerodha", "browserstack", "freshworks", "zoho", "chargebee",
-    "postman", "hasura", "setu", "niyo", "slice", "jupiter", "fi", "cred", "ofbusiness",
+    "postman", "hasura", "setu", "niyo", "slice", "jupiter", "fi", "ofbusiness",
     "darwinbox", "leadsquared", "druva", "icertis", "mindtickle", "moengage",
-    "clevertap", "appsflyer", "gupshup", "kaleyra", "tanla",
-    "openai", "anthropic", "cohere", "mistral", "databricks", "snowflake",
+    "clevertap", "appsflyer", "gupshup", "openai", "anthropic", "cohere",
     "cloudflare", "vercel", "hashicorp", "gitlab", "atlassian", "twilio",
+    "nvidia", "adobe", "salesforce", "oracle", "sap", "infosys", "wipro", "tcs",
 }
 
-ROLE_PATTERNS = re.compile(
+ROLE_RE = re.compile(
     r"\b(backend|software\s+engineer|sde[\s\-]?\d?|swe|platform|ai\s+engineer|"
     r"ml\s+engineer|machine\s+learning|llm|fullstack|full.stack|data\s+engineer|"
-    r"devops|sre|frontend)\b",
+    r"devops|sre|frontend|python|golang|go\s+developer)\b",
     re.IGNORECASE,
 )
-
-COMPANY_PATTERN = re.compile(
-    r"\b(?:at\s+|@\s*|for\s+|in\s+)([A-Z][A-Za-z0-9\.\-]+(?:\s+[A-Z][A-Za-z0-9]+)*)\b"
+COMPANY_RE = re.compile(
+    r"\b(?:at\s+|@\s*|for\s+)([A-Z][A-Za-z0-9\.\-]+(?:\s+[A-Z][A-Za-z0-9]+)*)\b"
 )
-
-
-async def _get_oauth_token() -> str | None:
-    """Get Reddit OAuth token using client_credentials grant (read-only, no user needed)."""
-    from dragnet.config import settings
-    if not settings.reddit_client_id or not settings.reddit_client_secret:
-        return None
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            OAUTH_TOKEN_URL,
-            data={"grant_type": "client_credentials"},
-            auth=(settings.reddit_client_id, settings.reddit_client_secret),
-            headers={"User-Agent": USER_AGENT},
-        )
-        resp.raise_for_status()
-        return resp.json().get("access_token")
 
 
 async def fetch_referral_opportunities() -> list[dict]:
-    """
-    Pull active referral opportunities from Reddit megathreads.
-    Requires REDDIT_CLIENT_ID + REDDIT_CLIENT_SECRET in .env
-    (register a free script app at reddit.com/prefs/apps).
-    Returns structured offers with company, role, Reddit username to DM.
-    """
-    token = await _get_oauth_token()
-    if not token:
-        logger.warning(
-            "Reddit sourcing skipped — REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET not set. "
-            "Register a free app at reddit.com/prefs/apps (script type) and add creds to .env."
-        )
+    """Try OAuth first, fall back to Stagehand."""
+    results = await _fetch_via_oauth()
+    if results:
+        return results
+    return await _fetch_via_browser()
+
+
+# ── OAuth path ────────────────────────────────────────────────────────────────
+
+async def _fetch_via_oauth() -> list[dict]:
+    from dragnet.config import settings
+    if not settings.reddit_client_id or not settings.reddit_client_secret:
         return []
 
-    headers = {**BASE_HEADERS, "Authorization": f"Bearer {token}"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(
+                OAUTH_TOKEN_URL,
+                data={"grant_type": "client_credentials"},
+                auth=(settings.reddit_client_id, settings.reddit_client_secret),
+                headers={"User-Agent": USER_AGENT},
+            )
+            r.raise_for_status()
+            token = r.json().get("access_token")
+    except Exception as e:
+        logger.warning(f"Reddit OAuth token failed: {e}")
+        return []
+
+    headers = {"User-Agent": USER_AGENT, "Authorization": f"Bearer {token}"}
     seen: set[str] = set()
     results: list[dict] = []
 
-    async with httpx.AsyncClient(timeout=20.0, headers=headers, base_url=OAUTH_API_BASE) as client:
-        for cfg in SUBREDDITS:
+    async with httpx.AsyncClient(timeout=20, headers=headers, base_url=OAUTH_BASE) as client:
+        for sub, query in SEARCH_TARGETS:
             try:
-                threads = await _fetch_threads(client, cfg)
+                r = await client.get(
+                    f"/r/{sub}/search",
+                    params={"q": query, "sort": "new", "restrict_sr": "1", "limit": 10, "t": "month"},
+                )
+                r.raise_for_status()
+                posts = r.json().get("data", {}).get("children", [])
+                threads = [p["data"] for p in posts if p.get("data", {}).get("num_comments", 0) > 2]
+
                 for thread in threads:
-                    offers = await _extract_offers_from_thread(client, thread)
-                    for offer in offers:
-                        if offer["dedup_hash"] not in seen:
-                            seen.add(offer["dedup_hash"])
-                            results.append(offer)
+                    thread_id = thread.get("id", "")
+                    permalink = thread.get("permalink", "")
+                    cr = await client.get(f"/r/{sub}/comments/{thread_id}", params={"limit": 200, "depth": 2})
+                    cr.raise_for_status()
+                    data = cr.json()
+                    if isinstance(data, list) and len(data) >= 2:
+                        comments = data[1].get("data", {}).get("children", [])
+                        for offer in _parse_comments(comments, f"https://reddit.com{permalink}", thread.get("title", "")):
+                            if offer["dedup_hash"] not in seen:
+                                seen.add(offer["dedup_hash"])
+                                results.append(offer)
+
                 await asyncio.sleep(1.0)
             except Exception as e:
-                logger.error(f"Reddit fetch failed for r/{cfg['sub']}: {e}")
-                continue
+                logger.error(f"Reddit OAuth fetch failed r/{sub}: {e}")
 
-    logger.info(f"Reddit: {len(results)} referral opportunities found")
+    logger.info(f"Reddit (OAuth): {len(results)} referral opportunities")
     return results
 
 
-async def _fetch_threads(client: httpx.AsyncClient, cfg: dict) -> list[dict]:
-    sub = cfg["sub"]
-    q = cfg["search_query"]
-    resp = await client.get(
-        f"/r/{sub}/search",
-        params={"q": q, "sort": "new", "restrict_sr": "1", "limit": 10, "t": "month"},
-    )
-    resp.raise_for_status()
-    posts = resp.json().get("data", {}).get("children", [])
-    return [p["data"] for p in posts if p.get("data", {}).get("num_comments", 0) > 0]
+# ── Stagehand/browser path ────────────────────────────────────────────────────
 
-
-async def _extract_offers_from_thread(client: httpx.AsyncClient, thread: dict) -> list[dict]:
-    thread_id = thread.get("id", "")
-    sub = thread.get("subreddit", "")
-    thread_title = thread.get("title", "")
-    thread_url = f"https://reddit.com{thread.get('permalink', '')}"
-
-    # Fetch comments via OAuth API
+async def _fetch_via_browser() -> list[dict]:
     try:
-        resp = await client.get(
-            f"/r/{sub}/comments/{thread_id}",
-            params={"limit": 200, "depth": 2},
+        from dragnet.executor.session import BrowserSession
+        from dragnet.config import settings
+        _ = settings.browserbase_api_key
+    except Exception:
+        logger.warning(
+            "Reddit sourcing skipped — no OAuth credentials and no BROWSERBASE_API_KEY. "
+            "Add REDDIT_CLIENT_ID/SECRET or BROWSERBASE_API_KEY to .env."
         )
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as e:
-        logger.debug(f"Failed to fetch comments for {thread_id}: {e}")
         return []
 
-    offers = []
-    if not isinstance(data, list) or len(data) < 2:
-        return []
+    from dragnet.executor.session import BrowserSession
+    seen: set[str] = set()
+    results: list[dict] = []
 
-    comments = data[1].get("data", {}).get("children", [])
+    for search_url in BROWSER_SEARCH_URLS:
+        try:
+            async with BrowserSession() as session:
+                await session.goto(search_url)
+                await session.page.wait_for_timeout(3000)
+
+                # Extract post links from search results
+                post_links = await session.page.evaluate("""() => {
+                    const links = [...document.querySelectorAll('a[href*="/comments/"]')];
+                    return [...new Set(links.map(a => a.href))].slice(0, 8);
+                }""")
+
+                for post_url in post_links:
+                    try:
+                        await session.goto(post_url)
+                        await session.page.wait_for_timeout(2000)
+
+                        title = await session.page.title()
+                        comments_text = await session.page.evaluate("""() => {
+                            const items = [...document.querySelectorAll('[data-testid="comment"]')];
+                            return items.slice(0, 100).map(el => ({
+                                text: el.innerText?.slice(0, 500) || '',
+                                author: el.querySelector('a[href*="/user/"]')?.innerText || ''
+                            }));
+                        }""")
+
+                        for comment in (comments_text or []):
+                            body = comment.get("text", "")
+                            author = comment.get("author", "").lstrip("u/")
+                            if not body or not author:
+                                continue
+                            lower = body.lower()
+                            if not any(kw in lower for kw in ["referral", "refer", "dm me", "pm me"]):
+                                continue
+                            offer = _make_offer(body, author, post_url, title)
+                            if offer["dedup_hash"] not in seen:
+                                seen.add(offer["dedup_hash"])
+                                results.append(offer)
+
+                        await asyncio.sleep(1.5)
+                    except Exception as e:
+                        logger.debug(f"Reddit post scrape failed {post_url}: {e}")
+
+        except Exception as e:
+            logger.error(f"Reddit browser fetch failed for {search_url}: {e}")
+
+    logger.info(f"Reddit (browser): {len(results)} referral opportunities")
+    return results
+
+
+# ── Parsing helpers ───────────────────────────────────────────────────────────
+
+def _parse_comments(comments: list, thread_url: str, title: str) -> list[dict]:
+    results = []
     for comment in comments:
         cdata = comment.get("data", {})
         body = cdata.get("body", "")
         author = cdata.get("author", "")
-        created = cdata.get("created_utc")
-
         if not body or author in ("[deleted]", "AutoModerator", ""):
             continue
-
-        # Only process comments that look like referral offers
         lower = body.lower()
         if not any(kw in lower for kw in ["referral", "refer", "dm me", "pm me", "message me"]):
             continue
-
-        parsed = _parse_referral_comment(body, author, thread_url, thread_title)
-        if parsed:
-            offers.append(parsed)
-
-    return offers
+        results.append(_make_offer(body, author, thread_url, title))
+    return results
 
 
-def _parse_referral_comment(body: str, author: str, thread_url: str, thread_title: str) -> dict | None:
+def _make_offer(body: str, author: str, thread_url: str, thread_title: str) -> dict:
     lower = body.lower()
-
-    # Extract company mentions
-    companies_found = []
-    for company in TECH_COMPANIES:
-        if company in lower:
-            companies_found.append(company.title())
-
-    # Regex for capitalized company names
-    cap_matches = COMPANY_PATTERN.findall(body)
-    for m in cap_matches:
-        if len(m) > 2 and m not in ("I", "DM", "PM", "For", "At"):
-            companies_found.append(m)
-
-    # Extract role mentions
-    role_matches = ROLE_PATTERNS.findall(body)
-    roles = list(set(r.strip() for r in role_matches))
-
-    company = ", ".join(set(companies_found)) if companies_found else "Unknown"
-    role = ", ".join(set(roles)) if roles else "Software Engineer"
-
-    # Generate dedup hash on author + first 100 chars of body
-    dedup_str = f"reddit:{author}:{body[:100]}"
-    dedup_hash = hashlib.sha256(dedup_str.encode()).hexdigest()
-
-    contact_url = f"https://reddit.com/u/{author}"
-
+    companies = [c.title() for c in TECH_COMPANIES if c in lower]
+    cap = [m for m in COMPANY_RE.findall(body) if len(m) > 2 and m not in ("I", "DM", "PM")]
+    companies = list(set(companies + cap))
+    roles = list(set(ROLE_RE.findall(body)))
     return {
         "type": "referral",
         "source": "reddit",
-        "company": company,
-        "role": role,
+        "company": ", ".join(companies) if companies else "Unknown",
+        "role": ", ".join(roles) if roles else "Software Engineer",
         "contact_name": f"u/{author}",
-        "contact_url": contact_url,
+        "contact_url": f"https://reddit.com/u/{author}",
         "thread_url": thread_url,
         "thread_title": thread_title,
         "body_preview": body[:300],
-        "how_to_contact": f"DM u/{author} on Reddit: {contact_url}",
-        "dedup_hash": dedup_hash,
+        "how_to_contact": f"DM u/{author} on Reddit: https://reddit.com/u/{author}",
+        "dedup_hash": hashlib.sha256(f"reddit:{author}:{body[:100]}".encode()).hexdigest(),
     }
