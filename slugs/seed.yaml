@@ -1,0 +1,148 @@
+# Seed slugs for ATS crawlers.
+# Format: company | ats_type | slug
+# Sources: YC companies, remote-first AI/backend cos, Indian tech cos (Bangalore/Delhi)
+
+greenhouse:
+  # Global-remote, EOR-friendly
+  - company: Posthog
+    slug: posthog
+  - company: Linear
+    slug: linear
+  - company: Liveblocks
+    slug: liveblocks
+  - company: Cal.com
+    slug: calcom
+  - company: Airbyte
+    slug: airbyte
+  - company: Temporal
+    slug: temporaltechnologies
+  - company: Encore.dev
+    slug: encoredev
+  - company: Apify
+    slug: apify
+  - company: Sourcegraph
+    slug: sourcegraph
+  - company: Hashnode
+    slug: hashnode
+  - company: Supabase
+    slug: supabase
+  - company: GitLab
+    slug: gitlab
+  - company: Fly.io
+    slug: fly-io
+  - company: Neon
+    slug: neondatabase
+  - company: Resend
+    slug: resend
+  - company: Turso
+    slug: turso
+  - company: Prisma
+    slug: prismaio
+  - company: Oxide Computer
+    slug: oxidecomputer
+  - company: Trigger.dev
+    slug: triggerdev
+  - company: Grafbase
+    slug: grafbase
+  - company: Tinybird
+    slug: tinybird
+
+  # Indian tech companies (Bangalore/Delhi) - Greenhouse users
+  - company: Razorpay
+    slug: razorpay
+  - company: CRED
+    slug: dreamplug
+  - company: BrowserStack
+    slug: browserstack
+  - company: Postman
+    slug: postman
+  - company: slice
+    slug: sliceit
+  - company: Setu
+    slug: setu
+  - company: Juspay
+    slug: juspay
+  - company: Porter
+    slug: porter
+  - company: Ula
+    slug: ula
+  - company: Darwinbox
+    slug: darwinbox
+  - company: Groww
+    slug: groww
+  - company: Zepto
+    slug: zepto
+  - company: Dukaan
+    slug: dukaan
+  - company: Chargebee
+    slug: chargebee
+  - company: Freshworks
+    slug: freshworks
+  - company: Unacademy
+    slug: unacademy
+  - company: Vedantu
+    slug: vedantu
+  - company: Lenskart
+    slug: lenskart
+
+lever:
+  # Global remote
+  - company: Remote.com
+    slug: remote
+  - company: Knock
+    slug: knock
+  - company: Lago
+    slug: lago
+  - company: Inngest
+    slug: inngest
+  - company: Render
+    slug: render
+  - company: Mintlify
+    slug: mintlify
+
+  # Indian companies using Lever
+  - company: Meesho
+    slug: meesho
+  - company: Swiggy
+    slug: swiggy
+  - company: Urban Company
+    slug: urbancompany
+  - company: PhonePe
+    slug: phonepe
+  - company: Zomato
+    slug: zomato
+  - company: Dunzo
+    slug: dunzo
+  - company: Zetwerk
+    slug: zetwerk
+  - company: Rupeek
+    slug: rupeek
+  - company: Vymo
+    slug: vymo
+  - company: Innovaccer
+    slug: innovaccer
+  - company: Exotel
+    slug: exotel
+  - company: Clevertap
+    slug: clevertap
+  - company: MoEngage
+    slug: moengage
+
+ashby:
+  # Global remote
+  - company: Oxide Computer
+    slug: oxide
+  - company: Liveblocks
+    slug: liveblocks
+  - company: Linear
+    slug: linear
+  - company: Highlight.io
+    slug: highlight
+  - company: Lago
+    slug: lago
+
+  # Indian tech
+  - company: Setu
+    slug: setu
+  - company: Hyperface
+    slug: hyperface
