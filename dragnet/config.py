@@ -21,11 +21,11 @@ class Settings(BaseSettings):
     # Gmail
     gmail_credentials_file: Path = Path("credentials.json")
     gmail_token_file: Path = Path("token.json")
-    gmail_sender_address: str
+    gmail_sender_address: str = ""
 
     # Identity
     applicant_name: str = "Aditya Sharma"
-    applicant_email: str
+    applicant_email: str = ""
     applicant_phone: str = "+91 98293 68698"
     applicant_github: str = "https://github.com/adsha27"
     applicant_location: str = "Delhi, India"
