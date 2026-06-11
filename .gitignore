@@ -1,4 +1,21 @@
+# Secrets and environment
 .env
+token.json
+credentials.json
+
+# Personal / private data — never commit these
+facts.yaml
+profile.md
+resume.tex
+resume_templates/
+beginning.txt
+pg-1.jpg
+evals/golden_set*.json
+
+# Claude Code local settings
+.claude/
+
+# Build artifacts
 *.pyc
 __pycache__/
 .venv/
@@ -7,5 +24,6 @@ output/
 *.pdf
 node_modules/
 .DS_Store
-token.json
-credentials.json
+*.egg-info/
+dist/
+.pytest_cache/
