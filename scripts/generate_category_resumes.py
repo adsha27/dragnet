@@ -114,6 +114,7 @@ STRICT RULES:
 6. Write a 2-sentence summary connecting the candidate to the target category. Direct. No "excited to" or "passionate about".
 7. Never use em-dashes. Use commas, periods, or plain dashes.
 8. Write like a person. No buzzwords: leverage, spearhead, synergy, facilitate.
+9. CRITICAL: Every bullet must be 100 characters or shorter. A bullet that wraps to a second line wastes space and looks bad. Count characters. If over 100, cut words until it fits. This is non-negotiable.
 
 Return valid JSON only, no markdown."""
 
@@ -195,7 +196,7 @@ Return JSON matching this schema:
         {
             "name": proj["name"],
             "stack": ", ".join(proj.get("stack", [])),
-            "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
+            "bullets": [f["claim"] for f in proj.get("facts", [])[:3]],
         }
         for proj in facts.get("projects", [])
         if proj["name"].lower() in included_names
@@ -265,13 +266,15 @@ Return JSON matching this schema:
 
     try:
         import shutil
+        latex_out_dir = OUTPUT_DIR / "latex"
+        latex_out_dir.mkdir(exist_ok=True)
         if shutil.which("tectonic"):
             result = subprocess.run(
-                ["tectonic", str(tex_path), "--outdir", str(OUTPUT_DIR)],
+                ["tectonic", str(tex_path), "--outdir", str(latex_out_dir)],
                 capture_output=True, text=True, timeout=120,
             )
             if result.returncode == 0:
-                logger.info(f"Compiled (latex): {tex_path.with_suffix('.pdf')}")
+                logger.info(f"Compiled (latex): {latex_out_dir / tex_path.with_suffix('.pdf').name}")
             else:
                 logger.warning(f"tectonic failed for {category}:\n{result.stderr[:300]}\n{result.stdout[:300]}")
         else:
@@ -318,7 +321,7 @@ def _render_typst(selection: dict, facts: dict, cat_info: dict) -> str:
             {
                 "name": proj["name"],
                 "stack": ", ".join(proj.get("stack", [])),
-                "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
+                "bullets": [f["claim"] for f in proj.get("facts", [])[:3]],
             }
             for proj in facts.get("projects", [])
             if proj["name"].lower() in included_project_names
@@ -390,15 +393,19 @@ def _render_latex(selection: dict, facts: dict, cat_info: dict) -> str:
             "bullets": role_sel.get("bullets", []),
         })
 
-    included_project_names = {p.lower() for p in selection.get("include_projects", [])}
-    projects = []
-    for proj in facts.get("projects", []):
-        if proj["name"].lower() in included_project_names:
-            projects.append({
+    if "_projects_rendered" in selection:
+        projects = selection["_projects_rendered"]
+    else:
+        included_project_names = {p.lower() for p in selection.get("include_projects", [])}
+        projects = [
+            {
                 "name": proj["name"],
                 "stack": ", ".join(proj.get("stack", [])),
-                "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
-            })
+                "bullets": [f["claim"] for f in proj.get("facts", [])[:3]],
+            }
+            for proj in facts.get("projects", [])
+            if proj["name"].lower() in included_project_names
+        ]
 
     education = [
         {
