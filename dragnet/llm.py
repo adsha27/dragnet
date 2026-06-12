@@ -75,15 +75,15 @@ async def complete(
             raise
 
 
-async def complete_json(system: str, user: str, max_tokens: int = 1024) -> dict:
-    """Call LLM and parse JSON response. Raises ValueError on bad JSON."""
+async def complete_json(system: str, user: str, max_tokens: int = 1024) -> dict | list:
+    """Call LLM and parse JSON response (object or array). Raises ValueError on bad JSON."""
     response = await complete(system, user, json_mode=True, max_tokens=max_tokens)
     try:
         return json.loads(response.content)
     except json.JSONDecodeError:
-        # Try to extract JSON block if model wrapped it
         import re
-        match = re.search(r'\{.*\}', response.content, re.DOTALL)
+        # Match outermost JSON object OR array
+        match = re.search(r'(\[.*\]|\{.*\})', response.content, re.DOTALL)
         if match:
             return json.loads(match.group())
         raise ValueError(f"LLM returned non-JSON: {response.content[:300]}")

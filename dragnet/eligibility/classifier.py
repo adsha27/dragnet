@@ -228,7 +228,7 @@ async def classify_jobs_batch(jobs: list[dict]) -> list[ClassificationResult]:
     )
 
     try:
-        raw = await complete_json(SYSTEM_PROMPT, user_content, max_tokens=BATCH_SIZE * 250)
+        raw = await complete_json(SYSTEM_PROMPT, user_content, max_tokens=BATCH_SIZE * 400)
         if not isinstance(raw, list):
             raw = [raw]
         # Sort by idx to guarantee order, pad missing with errors
