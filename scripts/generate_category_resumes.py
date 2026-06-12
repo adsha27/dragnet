@@ -34,6 +34,39 @@ logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = Path("output/category_resumes")
 
+
+def _pdf_page_count(pdf_path: Path) -> int:
+    try:
+        import fitz
+        doc = fitz.open(str(pdf_path))
+        n = doc.page_count
+        doc.close()
+        return n
+    except Exception:
+        return -1
+
+
+def _pdf_fill_pct(pdf_path: Path) -> float:
+    """Render page as image and find lowest non-white row."""
+    try:
+        import fitz
+        doc = fitz.open(str(pdf_path))
+        page = doc.load_page(0)
+        pix = page.get_pixmap(matrix=fitz.Matrix(1, 1))
+        w, h = pix.width, pix.height
+        samples = pix.samples
+        doc.close()
+        last_row = 0
+        for y in range(h - 1, -1, -1):
+            row = samples[y * w * 3: (y + 1) * w * 3]
+            if any(b < 245 for b in row):
+                last_row = y
+                break
+        return last_row / h * 100
+    except Exception as e:
+        logger.warning(f"fill check failed: {e}")
+        return -1.0
+
 def _typst_escape(value: object) -> object:
     if isinstance(value, str):
         return value.replace("#", r"\#").replace("]", r"\]")
@@ -78,7 +111,6 @@ STRICT RULES:
 3. RESUME-SAFE FACTS are labelled [RESUME-SAFE FACTS]. Use ONLY these for bullets. Every bullet must be traceable to a named fact.
 4. Prefer facts that have numbers in them. A bullet with a concrete number (1,000 users, 156 conversations, 115s to 6s, 5 languages, 2 bots) is worth 3 generic bullets.
 5. For right_walk: write exactly 5 bullets. For mercury_digital: write exactly 2 bullets. For custard: write exactly 1 bullet. Lead with what changed, not what you did.
-6a. Projects: always include dragnet and Birbal. Add govRAG only for AI/ML categories. Do NOT use govRAG for backend/SDE categories — dragnet is the stronger backend project.
 6. Write a 2-sentence summary connecting the candidate to the target category. Direct. No "excited to" or "passionate about".
 7. Never use em-dashes. Use commas, periods, or plain dashes.
 8. Write like a person. No buzzwords: leverage, spearhead, synergy, facilitate.
@@ -155,33 +187,75 @@ Return JSON matching this schema:
     selection = await complete_json(SYSTEM_PROMPT, prompt, max_tokens=2048)
 
     # Enforce project selection — LLM guidance is advisory; code is authoritative
-    if "ai" in category:
-        selection["include_projects"] = ["dragnet", "Birbal", "govRAG"]
-    else:
-        selection["include_projects"] = ["dragnet", "Birbal"]
+    selection["include_projects"] = ["dragnet", "Birbal"]
 
-    typst_source = _render_typst(selection, facts, cat_info)
+    # Pre-resolve projects as mutable list so trim loop can shed bullets
+    included_names = {p.lower() for p in selection["include_projects"]}
+    selection["_projects_rendered"] = [
+        {
+            "name": proj["name"],
+            "stack": ", ".join(proj.get("stack", [])),
+            "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
+        }
+        for proj in facts.get("projects", [])
+        if proj["name"].lower() in included_names
+    ]
+
+    # Trim-to-fit loop: compile, check pages, shed content until 1 page
+    typ_path = OUTPUT_DIR / f"{category}.typ"
+    pdf_path = typ_path.with_suffix(".pdf")
+    rw_entry = next((e for e in selection.get("experience", []) if e.get("role_id") == "right_walk"), None)
+    md_entry = next((e for e in selection.get("experience", []) if e.get("role_id") == "mercury_digital"), None)
+
+    def _trim_one(attempt: int) -> bool:
+        """Remove one bullet. Returns True if something was trimmed."""
+        # 1. RWF down to 2
+        if rw_entry and len(rw_entry["bullets"]) > 2:
+            dropped = rw_entry["bullets"].pop()
+            logger.info(f"Overflow (attempt {attempt}): dropped RWF bullet: {dropped[:60]}…")
+            return True
+        # 2. Mercury down to 1
+        if md_entry and len(md_entry["bullets"]) > 1:
+            dropped = md_entry["bullets"].pop()
+            logger.info(f"Overflow (attempt {attempt}): dropped Mercury bullet: {dropped[:60]}…")
+            return True
+        # 3. Project bullets down to 1 each (in order)
+        for proj in selection["_projects_rendered"]:
+            if len(proj["bullets"]) > 1:
+                dropped = proj["bullets"].pop()
+                logger.info(f"Overflow (attempt {attempt}): dropped {proj['name']} bullet: {dropped[:60]}…")
+                return True
+        return False
+
+    for attempt in range(12):
+        typst_source = _render_typst(selection, facts, cat_info)
+        typ_path.write_text(typst_source)
+        try:
+            result = subprocess.run(
+                ["typst", "compile", str(typ_path), str(pdf_path)],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode != 0:
+                logger.warning(f"typst compile failed:\n{result.stderr[:300]}")
+                break
+            pages = _pdf_page_count(pdf_path)
+            if pages == 1:
+                break
+            if not _trim_one(attempt + 1):
+                logger.warning(f"Cannot trim further — still {pages} pages")
+                break
+        except Exception as e:
+            logger.warning(f"Compile error: {e}")
+            break
 
     firewall = check_resume_against_facts(typst_source)
     if not firewall.passed:
         logger.warning(f"Firewall violations in {category}: {firewall.violations}")
 
-    typ_path = OUTPUT_DIR / f"{category}.typ"
-    typ_path.write_text(typst_source)
+    fill = _pdf_fill_pct(pdf_path)
+    fill_warn = " *** UNDERFULL ***" if 0 < fill < 85 else ""
     logger.info(f"Written: {typ_path}")
-
-    try:
-        pdf_path = typ_path.with_suffix(".pdf")
-        result = subprocess.run(
-            ["typst", "compile", str(typ_path), str(pdf_path)],
-            capture_output=True, text=True, timeout=30,
-        )
-        if result.returncode == 0:
-            logger.info(f"Compiled (typst): {pdf_path}")
-        else:
-            logger.warning(f"typst compile failed for {category}:\n{result.stderr[:300]}")
-    except Exception as e:
-        logger.warning(f"Could not compile typst PDF for {category}: {e}")
+    logger.info(f"Compiled (typst): {pdf_path}  pages={_pdf_page_count(pdf_path)}  fill={fill:.1f}%{fill_warn}")
 
     # LaTeX output
     latex_source = _render_latex(selection, facts, cat_info)
@@ -235,15 +309,20 @@ def _render_typst(selection: dict, facts: dict, cat_info: dict) -> str:
             "bullets": role_sel.get("bullets", []),
         })
 
-    included_project_names = {p.lower() for p in selection.get("include_projects", [])}
-    projects = []
-    for proj in facts.get("projects", []):
-        if proj["name"].lower() in included_project_names:
-            projects.append({
+    # Use pre-resolved (and trim-loop-mutable) projects when available
+    if "_projects_rendered" in selection:
+        projects = selection["_projects_rendered"]
+    else:
+        included_project_names = {p.lower() for p in selection.get("include_projects", [])}
+        projects = [
+            {
                 "name": proj["name"],
                 "stack": ", ".join(proj.get("stack", [])),
                 "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
-            })
+            }
+            for proj in facts.get("projects", [])
+            if proj["name"].lower() in included_project_names
+        ]
 
     education = [
         {
