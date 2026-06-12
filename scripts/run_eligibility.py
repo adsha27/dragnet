@@ -195,6 +195,9 @@ async def main():
             save_checkpoint(checkpoint)
             batches_done += 1
 
+            # Flush eligible_jobs.json after every batch so progress is visible
+            _flush_eligible(jobs, checkpoint, args.output, input_path)
+
         # Progress
         done_total = already_done + i + len(batch)
         total_jobs = already_done + len(pending)
@@ -232,6 +235,18 @@ async def main():
         f"Done. {len(eligible)} eligible | {errors} errors | "
         f"{total_time/60:.1f} min total | checkpoint at {CHECKPOINT_FILE}"
     )
+
+
+def _flush_eligible(jobs: list[dict], checkpoint: dict, output_path: str, input_path: Path):
+    """Write all checkpoint-eligible jobs to file — called after every batch."""
+    eligible = []
+    for job in jobs:
+        h = job.get("dedup_hash", "")
+        r = checkpoint.get(h, {})
+        if r.get("eligible"):
+            job["_classification"] = r
+            eligible.append(job)
+    Path(output_path).write_text(json.dumps(eligible, default=str))
 
 
 def _write_eligible(jobs: list[dict], output_path: str, stage: str):
