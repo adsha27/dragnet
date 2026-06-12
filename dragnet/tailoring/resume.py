@@ -22,9 +22,17 @@ from dragnet.tailoring.firewall import FirewallResult, check_resume_against_fact
 
 logger = logging.getLogger(__name__)
 
+def _typst_escape(value: object) -> object:
+    if isinstance(value, str):
+        # Escape Typst special chars that break content mode
+        return value.replace("#", r"\#").replace("]", r"\]")
+    return value
+
+
 JINJA_ENV = Environment(
     loader=FileSystemLoader(str(settings.root / "resume_templates")),
     autoescape=False,
+    finalize=_typst_escape,
 )
 
 SYSTEM_PROMPT = """You are a resume tailoring assistant. Select and rephrase experience bullets from a candidate's verified fact sheet to match a specific job posting.
@@ -157,6 +165,7 @@ def _render_typst(selection: dict, facts: dict, posting: dict) -> str:
         name=identity["name"],
         tagline=identity["tagline"],
         email=identity["email"],
+        email_display=identity["email"].replace("@", r"\@"),
         phone=identity["phone"],
         github=identity["github"],
         summary=selection.get("summary", ""),

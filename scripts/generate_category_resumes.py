@@ -1,0 +1,267 @@
+"""
+Generates one tailored resume per job category.
+Run after eligibility filter has built output/eligible_jobs.json.
+
+Output: output/category_resumes/<category>.typ  (edit these)
+        output/category_resumes/<category>.pdf   (compiled for review)
+
+Usage:
+    python scripts/generate_category_resumes.py
+    python scripts/generate_category_resumes.py --categorize-only   # just tag categories, no resume
+    python scripts/generate_category_resumes.py --category india_ai  # regenerate one
+"""
+
+import argparse
+import asyncio
+import json
+import logging
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from dragnet.tailoring.categories import CATEGORIES, categorize_job
+from dragnet.tailoring.facts import facts_as_context_string, load_facts
+from dragnet.tailoring.firewall import check_resume_against_facts
+from dragnet.llm import complete_json
+from dragnet.config import settings
+
+import subprocess
+from jinja2 import Environment, FileSystemLoader
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
+OUTPUT_DIR = Path("output/category_resumes")
+
+def _typst_escape(value: object) -> object:
+    if isinstance(value, str):
+        return value.replace("#", r"\#").replace("]", r"\]")
+    return value
+
+
+JINJA_ENV = Environment(
+    loader=FileSystemLoader(str(settings.root / "resume_templates")),
+    autoescape=False,
+    finalize=_typst_escape,
+)
+
+SYSTEM_PROMPT = """You are a resume tailoring assistant. Given a job category archetype and sample job descriptions, select and rephrase experience bullets from a candidate's fact sheet to produce the best resume variant for that category.
+
+STRICT RULES:
+1. Every number you use MUST appear in the provided facts. Do not invent metrics.
+2. Do NOT use raw internal counts as resume bullets (46 MCP tools, 148 tests, 88636 lines, 563 tool calls).
+3. Use scope numbers to frame impact, not as standalone claims.
+4. Select 3-5 bullets per role. Lead with what changed, not what you did.
+5. Write a 2-sentence summary connecting the candidate to the target category. Direct. No "excited to" or "passionate about".
+6. Never use em-dashes. Use commas, periods, or plain dashes.
+7. Write like a person. No buzzwords: leverage, spearhead, synergy, facilitate.
+8. For the 115s to 6s benchmark: only cite exact numbers if interview_prep_required is false.
+
+Return valid JSON only, no markdown."""
+
+SELECTION_SCHEMA = """{
+  "summary": "2-sentence summary for this category of role",
+  "experience": [
+    {"role_id": "right_walk", "bullets": ["...", "...", "..."]},
+    {"role_id": "mercury_digital", "bullets": ["...", "..."]},
+    {"role_id": "custard", "bullets": ["...", "..."]}
+  ],
+  "include_projects": ["project names most relevant to this category"],
+  "skills_emphasis": {
+    "languages": "comma-separated, most relevant first",
+    "backend": "comma-separated frameworks and tools",
+    "ai_agents": "comma-separated AI/agent tools",
+    "infra": "comma-separated infra tools"
+  }
+}"""
+
+
+def _categorize_prefiltered() -> dict[str, list[dict]]:
+    """Read prefiltered jobs and group by category (adds category field)."""
+    jobs_path = Path("output/prefiltered_jobs.json")
+    if not jobs_path.exists():
+        logger.error("output/prefiltered_jobs.json not found")
+        sys.exit(1)
+    jobs = json.loads(jobs_path.read_text())
+    buckets: dict[str, list[dict]] = {k: [] for k in CATEGORIES}
+    for job in jobs:
+        cat = categorize_job(job)
+        job["category"] = cat
+        buckets[cat].append(job)
+    return buckets
+
+
+def _pick_samples(jobs: list[dict], n: int = 5) -> list[dict]:
+    """Pick n representative jobs — prefer those with content_text."""
+    with_content = [j for j in jobs if j.get("content_text") and len(j["content_text"]) > 100]
+    pool = with_content if with_content else jobs
+    step = max(1, len(pool) // n)
+    return pool[::step][:n]
+
+
+async def generate_one(category: str, jobs: list[dict]) -> None:
+    cat_info = CATEGORIES[category]
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    samples = _pick_samples(jobs)
+    sample_text = "\n\n---\n\n".join(
+        f"Title: {j.get('title', '?')}\nCompany: {j.get('company_name') or j.get('company', '?')}\nLocation: {j.get('location', '?')}\n{(j.get('content_text') or '')[:600]}"
+        for j in samples
+    )
+
+    facts_context = facts_as_context_string()
+    facts = load_facts()
+
+    prompt = f"""CATEGORY: {cat_info['label']}
+DESCRIPTION: {cat_info['description']}
+
+SAMPLE JOB POSTINGS FROM THIS CATEGORY ({len(jobs)} total):
+{sample_text}
+
+CANDIDATE FACTS (only these may be used):
+{facts_context}
+
+Select and tailor bullets from these facts to best match this job category.
+Return JSON matching this schema:
+{SELECTION_SCHEMA}"""
+
+    logger.info(f"Generating resume for: {cat_info['label']}")
+    selection = await complete_json(SYSTEM_PROMPT, prompt, max_tokens=2048)
+
+    typst_source = _render_typst(selection, facts, cat_info)
+
+    firewall = check_resume_against_facts(typst_source)
+    if not firewall.passed:
+        logger.warning(f"Firewall violations in {category}: {firewall.violations}")
+
+    typ_path = OUTPUT_DIR / f"{category}.typ"
+    typ_path.write_text(typst_source)
+    logger.info(f"Written: {typ_path}")
+
+    try:
+        pdf_path = typ_path.with_suffix(".pdf")
+        result = subprocess.run(
+            ["typst", "compile", str(typ_path), str(pdf_path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            logger.info(f"Compiled: {pdf_path}")
+        else:
+            logger.warning(f"typst compile failed for {category}:\n{result.stderr[:300]}")
+    except Exception as e:
+        logger.warning(f"Could not compile PDF for {category}: {e}")
+
+
+def _render_typst(selection: dict, facts: dict, cat_info: dict) -> str:
+    template = JINJA_ENV.get_template("resume.typ.jinja")
+    from datetime import datetime
+
+    identity = facts["identity"]
+    skills_sel = selection.get("skills_emphasis", {})
+    skills_defaults = facts.get("skills", {})
+
+    roles_map = {
+        "right_walk": next((e for e in facts["experience"] if "Right Walk" in e["company"]), None),
+        "mercury_digital": next((e for e in facts["experience"] if "Mercury" in e.get("company", "")), None),
+        "custard": next((e for e in facts["experience"] if "Custard" in e.get("company", "")), None),
+    }
+
+    experience = []
+    for role_sel in selection.get("experience", []):
+        role_id = role_sel.get("role_id", "")
+        role_data = roles_map.get(role_id)
+        if not role_data:
+            continue
+        experience.append({
+            "title": role_data["role"],
+            "company": role_data["company"],
+            "location": role_data["location"],
+            "start": role_data["start"],
+            "end": role_data["end"],
+            "bullets": role_sel.get("bullets", []),
+        })
+
+    included_project_names = {p.lower() for p in selection.get("include_projects", [])}
+    projects = []
+    for proj in facts.get("projects", []):
+        if proj["name"].lower() in included_project_names:
+            projects.append({
+                "name": proj["name"],
+                "stack": ", ".join(proj.get("stack", [])),
+                "bullets": [f["claim"] for f in proj.get("facts", [])],
+            })
+
+    education = [
+        {
+            "degree": edu["degree"],
+            "institution": edu["institution"],
+            "cgpa": edu["cgpa"],
+            "graduation": edu.get("graduation", ""),
+        }
+        for edu in facts.get("education", [])
+    ]
+
+    return template.render(
+        generated_at=datetime.utcnow().isoformat(),
+        company=cat_info["label"],
+        title=cat_info["description"][:60],
+        name=identity["name"],
+        tagline=identity["tagline"],
+        email=identity["email"],
+        email_display=identity["email"].replace("@", r"\@"),
+        phone=identity["phone"],
+        github=identity["github"],
+        summary=selection.get("summary", ""),
+        experience=experience,
+        projects=projects,
+        skills={
+            "languages": skills_sel.get("languages", ", ".join(
+                skills_defaults.get("languages", {}).get("primary", []) +
+                skills_defaults.get("languages", {}).get("secondary", [])
+            )),
+            "backend": skills_sel.get("backend", ", ".join(skills_defaults.get("backend", []))),
+            "ai_agents": skills_sel.get("ai_agents", ", ".join(skills_defaults.get("ai_agents", []))),
+            "infra": skills_sel.get("infra", ", ".join(skills_defaults.get("infra", []))),
+        },
+        education=education,
+    )
+
+
+async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--categorize-only", action="store_true",
+                        help="Tag jobs with categories and print stats, no resume generation")
+    parser.add_argument("--category", help="Generate resume for one category only")
+    args = parser.parse_args()
+
+    buckets = _categorize_prefiltered()
+
+    print("\nCategory distribution (from prefiltered_jobs.json):")
+    total = 0
+    for cat, jobs in buckets.items():
+        print(f"  {CATEGORIES[cat]['label']:35s}  {len(jobs):4d} jobs")
+        total += len(jobs)
+    print(f"  {'TOTAL':35s}  {total:4d}\n")
+
+    if args.categorize_only:
+        return
+
+    targets = [args.category] if args.category else list(CATEGORIES.keys())
+    for cat in targets:
+        if cat not in CATEGORIES:
+            logger.error(f"Unknown category: {cat}")
+            continue
+        jobs = buckets[cat]
+        if not jobs:
+            logger.warning(f"No jobs in category {cat}, skipping")
+            continue
+        await generate_one(cat, jobs)
+
+    print(f"\nResumes written to: {OUTPUT_DIR}/")
+    print("Edit the .typ files, then recompile:")
+    print("  typst compile output/category_resumes/india_backend.typ")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

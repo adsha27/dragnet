@@ -17,7 +17,7 @@
   #v(-0.2em)
   #text(size: 10pt)[
     {{ tagline }} #h(0.4em) · #h(0.4em)
-    #link("mailto:{{ email }}")[{{ email }}] #h(0.4em) · #h(0.4em)
+    #link("mailto:{{ email }}")[{{ email_display }}] #h(0.4em) · #h(0.4em)
     {{ phone }} #h(0.4em) · #h(0.4em)
     #link("https://{{ github }}")[{{ github }}]
   ]
@@ -99,6 +99,6 @@
 #grid(
   columns: (1fr, auto),
   [#text(weight: "bold")[{{ edu.degree }}]], [#text[{{ edu.graduation }}]],
-  [#text(style: "italic")[{{ edu.institution }}. CGPA {{ edu.cgpa }} / 10.]], [],
+  [#text(style: "italic")[{{ edu.institution }}. CGPA {{ edu.cgpa }}]], [],
 )
 {% endfor %}
