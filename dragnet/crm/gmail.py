@@ -7,7 +7,8 @@ Uses Gmail API with label-based filtering.
 import base64
 import logging
 import re
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

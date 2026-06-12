@@ -7,7 +7,8 @@ Sent via Gmail API from your own address.
 
 import base64
 import logging
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
+UTC = timezone.utc
 from email.mime.text import MIMEText
 
 from sqlalchemy import func, select

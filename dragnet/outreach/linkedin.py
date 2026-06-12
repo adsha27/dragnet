@@ -14,7 +14,8 @@ Flow:
 
 import asyncio
 import logging
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
+UTC = timezone.utc
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession

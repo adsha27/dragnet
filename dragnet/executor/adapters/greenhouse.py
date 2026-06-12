@@ -10,6 +10,7 @@ from pathlib import Path
 from dragnet.config import settings
 from dragnet.executor.session import BrowserSession
 from dragnet.tailoring.answers import answer_custom_question
+from dragnet.tailoring.unicode_normalize import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -42,23 +43,26 @@ async def apply(
             return result
 
         # Fill standard fields
-        await session.act(f"Fill the first name field with '{_first_name()}'")
-        await session.act(f"Fill the last name field with '{_last_name()}'")
-        await session.act(f"Fill the email field with '{settings.applicant_email}'")
-        await session.act(f"Fill the phone field with '{settings.applicant_phone}'")
+        await session.act(normalize(f"Fill the first name field with '{_first_name()}'"))
+        await session.act(normalize(f"Fill the last name field with '{_last_name()}'"))
+        await session.act(normalize(f"Fill the email field with '{settings.applicant_email}'"))
+        await session.act(normalize(f"Fill the phone field with '{settings.applicant_phone}'"))
 
         # Location / address if asked
-        await session.act(f"If there is a location or city field, fill it with 'Delhi, India'")
+        await session.act(normalize(f"If there is a location or city field, fill it with '{settings.applicant_location}'"))
 
         # Resume upload
         try:
             await session.upload_file('input[type="file"]', resume_path)
         except Exception:
-            await session.act(f"Upload the resume file at path: {resume_path}")
+            await session.act(normalize(f"Upload the resume file at path: {resume_path}"))
 
         # LinkedIn / portfolio
-        await session.act(f"If there is a LinkedIn URL field, fill it with an empty value or skip it")
-        await session.act(f"If there is a website or portfolio field, fill it with '{settings.applicant_github}'")
+        if settings.applicant_linkedin:
+            await session.act(normalize(f"If there is a LinkedIn URL field, fill it with '{settings.applicant_linkedin}'"))
+        else:
+            await session.act("If there is a LinkedIn URL field, skip it or leave it empty")
+        await session.act(normalize(f"If there is a website or portfolio field, fill it with '{settings.applicant_github}'"))
 
         # Cover letter
         await session.act("If there is a cover letter text area, leave it empty or fill with a single space")
@@ -82,15 +86,17 @@ async def apply(
 
             if answer:
                 await session.act(
-                    f"Fill the question '{question_text[:80]}' with the answer: {answer}"
+                    normalize(f"Fill the question '{question_text[:80]}' with the answer: {answer}")
                 )
 
         # Work authorization / visa questions
         await session.act(
-            "If asked about work authorization or visa sponsorship, "
-            "select 'No' for US work authorization and 'Yes' for needing sponsorship, "
-            "OR if the form has a text field, enter: "
-            "'I am based in India and available to work as a contractor or via EOR'"
+            normalize(
+                "If asked about work authorization or visa sponsorship, "
+                "select 'No' for US work authorization and 'Yes' for needing sponsorship, "
+                "OR if the form has a text field, enter: "
+                "'I am based in India and available to work as a contractor or via EOR'"
+            )
         )
 
         # Screenshot before submit

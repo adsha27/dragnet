@@ -7,7 +7,9 @@ CAPTCHA / login-wall failures → human queue (not retried automatically).
 
 import logging
 import random
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -15,10 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from dragnet.config import settings
 from dragnet.db.models import Application, ApplicationState, FailureType, Posting, StateTransition
+from dragnet.eligibility.liveness import check_liveness
 from dragnet.eligibility.ranker import classify_and_rank_pending
 from dragnet.executor import session as browser_session
 from dragnet.executor.adapters import greenhouse, lever
-from dragnet.tailoring.resume import generate_resume
 from dragnet.tailoring.answers import generate_answers
 
 logger = logging.getLogger(__name__)
@@ -44,44 +46,44 @@ def needs_human_approval(submitted_count: int) -> bool:
     return random.random() < settings.approval_sample_rate
 
 
-async def run_tailoring_pass(db: AsyncSession) -> int:
-    """Tailor resumes + answers for all eligible, untailored postings. Returns count."""
+_CATEGORY_RESUMES_DIR = Path("output/category_resumes")
+
+
+async def run_tailoring_pass(db: AsyncSession, limit: int = 50) -> int:
+    """
+    Assign pre-reviewed category resumes to eligible postings.
+    No LLM calls — just resolves output/category_resumes/<category>.pdf.
+    Returns count of postings advanced to tailored state.
+    """
     result = await db.execute(
         select(Posting, Application)
-        .join(Application, Posting.id == Application.posting_id, isouter=True)
-        .where(
-            Posting.india_eligible.in_(["yes", "likely_yes"]),
-            Posting.rank_score > 0,
-        )
-        .order_by(Posting.rank_score.desc())
-        .limit(50)
+        .join(Application, Posting.id == Application.posting_id)
+        .where(Application.state == ApplicationState.eligible)
+        .limit(limit)
     )
 
     count = 0
     for posting, application in result.all():
-        if application and application.state not in (
-            ApplicationState.discovered,
-            ApplicationState.eligible,
-        ):
+        apply_url = posting.apply_url or ""
+
+        # Liveness check — skip for LinkedIn (auth wall), check direct ATS URLs
+        if "linkedin.com" not in apply_url:
+            liveness = await check_liveness(apply_url)
+            if not liveness.live:
+                logger.warning(f"Dead posting {posting.id} ({liveness.reason}): {apply_url}")
+                application.state = ApplicationState.ineligible
+                await _record_transition(db, application, ApplicationState.ineligible, "liveness_check")
+                await db.commit()
+                continue
+
+        # Resolve category PDF
+        category = (posting.raw_json or {}).get("category", "india_backend")
+        pdf_path = _CATEGORY_RESUMES_DIR / f"{category}.pdf"
+        if not pdf_path.exists():
+            logger.warning(f"Category PDF not found for '{category}' — run generate_category_resumes.py first")
             continue
 
-        try:
-            pdf_path, typst_source = await generate_resume({
-                "company": posting.company.name if posting.company else "",
-                "title": posting.title,
-                "content_text": posting.content_text or "",
-                "id": posting.id,
-            })
-        except ValueError as e:
-            logger.warning(f"Tailoring failed for posting {posting.id}: {e}")
-            continue
-
-        if application is None:
-            application = Application(posting_id=posting.id, state=ApplicationState.tailored)
-            db.add(application)
-        else:
-            application.state = ApplicationState.tailored
-
+        application.state = ApplicationState.tailored
         application.resume_path = str(pdf_path)
         await _record_transition(db, application, ApplicationState.tailored, "tailoring_pass")
         count += 1

@@ -6,7 +6,8 @@ Concurrency: 3 sessions max. Per-domain rate limit: 1 app/company/day.
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 from pathlib import Path
 
 from dragnet.config import settings

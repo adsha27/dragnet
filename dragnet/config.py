@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     applicant_email: str = ""
     applicant_phone: str = "+91 98293 68698"
     applicant_github: str = "https://github.com/adsha27"
+    applicant_linkedin: str = "https://linkedin.com/in/adsha/"
     applicant_location: str = "Delhi, India"
 
     # Reddit OAuth (register a free app at reddit.com/prefs/apps → script type)
