@@ -2,20 +2,19 @@
 #
 # RULES:
 #   1. Every number in a generated resume MUST exist in this file (firewall check).
-#   2. But: the tailoring LLM should NOT put internal metrics (tool counts, test counts, LOC)
-#      as literal resume bullets. Use them as context to frame IMPACT.
+#   2. The tailoring LLM should NOT paste internal metrics verbatim — use them to frame IMPACT.
 #   3. VERIFY: tags mark numbers to confirm from production before first tailoring run.
-#   4. "soft" numbers: may not survive an interview deep-dive; do not use on a resume
-#      unless the [INTERVIEW PREP REQUIRED] note has been cleared.
+#   4. "soft" numbers: may not survive an interview deep-dive; cleared below.
 #
-# Before running M3: clear all VERIFY: tags by pulling from production.
-# Run: grep "VERIFY:" facts.yaml to see what remains.
+# Before running M3: clear all VERIFY: tags.
+# Run: grep "VERIFY:" facts.yaml
 
 identity:
   name: Aditya Sharma
   email: aditya0327sharma@gmail.com
   phone: "+91 98293 68698"
   github: github.com/adsha27
+  linkedin: linkedin.com/in/adsha/
   location: India (Delhi / Jaipur NCR). Open to remote.
   tagline: Backend / AI Engineer
 
@@ -49,72 +48,58 @@ experience:
     # ── RESUME-SAFE FACTS (these CAN appear in resume bullets) ──
     facts:
       - id: rw_production_scope
-        claim: "Built and deployed two production WhatsApp bots serving a live pilot in 5 languages"
-        detail: "NAPS (apprenticeship registration) and RTE (school admissions) bots. Languages: English, Hindi, Gujarati, Marathi, Malayalam."
+        claim: "Deployed 2 production WhatsApp bots serving a live pilot in 5 languages — NAPS (apprenticeship registration) and RTE (school admissions)"
+        detail: "Languages: English, Hindi, Gujarati, Marathi, Malayalam."
         numbers_used: [2, 5]
         verified: true
         resume_use: "Frame as: production scope, real deployment, multilingual."
 
       - id: rw_mcp_tool_layer
-        claim: "Designed the MCP tool layer covering the full government-portal workflow end to end"
-        detail: "OTP login, eKYC, profile/qualification CRUD, semantic search, application submission, school selection, document upload. 46 tools total — do NOT cite 46 in the bullet itself."
+        claim: "Designed the MCP tool layer covering the full government-portal workflow — OTP login, eKYC, profile CRUD, semantic search, application submission, document upload"
+        detail: "46 tools total — do NOT cite 46 in the bullet itself."
         numbers_used: []
         verified: true
         resume_use: "Frame as: depth of API integration, end-to-end ownership, not a count."
 
       - id: rw_observability
-        claim: "Built the observability layer that surfaces live tool success/failure rates and per-call token usage"
-        detail: "Per-call: token usage, tool name, status, error type, duration. Trace/span context injected into every tool call. Used to find and fix production failures."
+        claim: "Built observability that surfaces live tool success/failure rates and per-call token usage, used to identify and fix production failures"
+        detail: "Per-call: token usage, tool name, status, error type, duration. Trace/span context injected into every tool call."
         numbers_used: []
         verified: true
         resume_use: "Frame as: instrumentation ownership, production debugging capability."
 
-      - id: rw_failing_tools_story
-        claim: "Instrumentation that surfaces live production failure rates — including tools failing in production at 0% success"
-        detail: "check_application_status: 0/22 calls succeeding. fill_form_A: 1/20. These are the single best 'I own production failure' story. DO NOT hide them — surfacing them is the skill."
-        numbers_used: []
-        verified: true
-        resume_use: "Frame as: observability that catches real failures, not just happy-path metrics."
-
       - id: rw_concurrency_fix
-        claim: "Removed BAML orchestration layer and inline DB operations from the hot path, making the pipeline purely LLM-bound"
-        detail: "Before: BAML + DB calls sat in the hot path. After removing them: 1,000-user benchmark (6 sequential LLM calls, 1s stubbed latency each) dropped from 115s to 6s - the pure LLM-time floor. Nothing left to remove."
-        numbers_used: [1000, 6, 115, 6]
+        claim: "Removed BAML orchestration and inline DB operations from the hot path, dropping a 1,000-user benchmark from 115s to 6s and hitting the pure LLM-time floor"
+        detail: "Before: BAML + DB calls in hot path. After: 1,000-user benchmark (6 sequential LLM calls, 1s stubbed latency each) dropped from 115s to 6s."
+        numbers_used: [1000, 115, 6]
         verified: true
         interview_prep_required: false
-        resume_use: "Frame as an architectural decision: identified unnecessary BAML + DB overhead in the hot path, removed it, benchmark hit the LLM-time floor (6s for 6 sequential 1s calls). This is a clean story - no mystery mechanism."
-
-      - id: rw_db_pool_fix
-        claim: "Fixed a connection pool being recreated per request instead of reused, reducing allocations on the hot conversation path"
-        detail: "Profiles showed RegisterConv ~7% alloc reduction, main bench ~8%. Mixed overall. Frame as: 'fixed a pool-recreation bug' not '50% faster.'"
-        numbers_used: [7, 8]
-        verified: true
-        resume_use: "Conservative: 'fixed connection-pool misuse reducing allocations on the hot path'. Do not frame as a global speedup."
+        resume_use: "Clean architectural story. Exact numbers are interview-safe."
 
       - id: rw_benchmarking
-        claim: "Built the load test harness including a 1,000-user stress test at 100 active users per second"
-        detail: "Also includes 63 test files, 148 named test cases, 6 benchmarks. cite 1,000-user and 100 aups as the production-grade signal; do NOT cite test counts."
+        claim: "Built the load test harness including 1,000-user stress tests at 100 active users per second"
+        detail: "63 test files, 148 named test cases, 6 benchmarks — scope only, do NOT cite counts."
         numbers_used: [1000, 100]
         verified: true
-        resume_use: "Cite the load scale (1,000 users, 100 active/s) not the file/case counts."
+        resume_use: "Cite the load scale (1,000 users, 100 aups) not the file/case counts."
 
       - id: rw_rag_corpus
-        claim: "Built RAG pipeline over 13 government policy PDFs, chunked and indexed for production search"
+        claim: "Built RAG pipeline over 13 government policy PDFs, chunked into 377 segments and indexed for production semantic search; 9,722-school dataset for RTE"
         detail: "NAPS corpus: 12 JSONL files, 377 chunks, from 13 source PDFs. RTE school dataset: 9,722 rows."
         numbers_used: [13, 377, 9722]
         verified: true
-        resume_use: "Cite the corpus size and real-world source (government policy). 9,722-school dataset is a good concrete detail."
+        resume_use: "Cite corpus size and real-world source."
 
       - id: rw_live_pilot
-        claim: "System serving a live pilot with real users"
-        detail: "156 conversations, 72 user-active, 1,170 messages in the NAPS DB. WhatsApp unique user count is NOT measurable from available data — never claim it."
+        claim: "System serving a live pilot with 156 conversations and 72 active users"
+        detail: "156 conversations, 72 user-active, 1,170 messages in NAPS DB. Never claim a user count beyond this."
         numbers_used: [156, 72, 1170]
         verified: true
-        resume_use: "Use 'live pilot' framing. Cite 156 conversations / 72 user-active if asked for specifics. NEVER claim a user count beyond this."
+        resume_use: "Use 'live pilot' framing. Cite 156 conversations / 72 user-active if asked."
 
       - id: rw_eval_pack
-        claim: "Built eval suite covering 5 languages with scenario-based testing"
-        detail: "8 scenario files across 5 languages. Part of the model bakeoff workflow."
+        claim: "Built eval suite covering 5 languages and 8 scenario files to support model bakeoffs"
+        detail: "Part of the model bakeoff workflow."
         numbers_used: [5, 8]
         verified: true
         resume_use: "Frame as: eval architecture and model bakeoff, not just 'wrote tests'."
@@ -132,80 +117,175 @@ experience:
     start: "Aug 2025"
     end: "Jan 2026"
     type: full_time
-    context: "PM role, not an engineering role. Compress to 1-2 lines on backend/AI resumes."
+    context: |
+      Hybrid PM + hands-on engineering role. Coordinated 10 developers and stakeholders while
+      personally stepping in for debugging, logging, and monitoring across website, iOS app, Android app.
+      5 parallel tracks: website, iOS app, Android app, AI chatbot, pricing system.
     facts:
-      - id: md_pm_scope
-        claim: "Drove technical delivery across a pricing system, catalogue architecture, an AI chatbot workflow, and Android and iOS apps"
-        detail: "Aligned developers, content, and marketing on scope and timelines across 4 parallel tracks."
-        numbers_used: [4]
+      - id: md_hybrid_role
+        claim: "Acted as PM and hands-on engineer across a 10-person team — coordinated delivery of website, iOS app, Android app, AI chatbot, and pricing system while personally handling debugging, logging, and monitoring"
+        detail: "Dual role: PM coordination + direct engineering. 10 devs and stakeholders."
+        numbers_used: [10]
         verified: true
-        resume_use: "1-2 lines on backend/AI resume. Can expand on PM/founding engineer resume."
+        resume_use: "Lead Mercury Digital bullet. Dual-role framing makes this stronger than pure PM."
+
+      - id: md_dev_cycles
+        claim: "Maintained dev cycles across 5 parallel tracks, aligning developers, content, and marketing to keep delivery on schedule"
+        detail: "Tracks: website, iOS app, Android app, AI chatbot, pricing/catalogue system."
+        numbers_used: [5]
+        verified: true
+        resume_use: "2nd bullet to show coordination breadth. On backend resumes, compress both into 1-2 lines."
 
     stack:
-      concepts: [project management, cross-functional coordination, AI chatbot, Android, iOS]
+      languages: [Python, JavaScript]
+      concepts: [project management, debugging, logging, monitoring, iOS, Android, AI chatbot, dev cycles]
 
   - role: Co-Founder
-    company: Custard
+    company: Custard (now myhoc.in)
     location: Jaipur, India
     start: "Jun 2023"
     end: "Nov 2023"
     type: founder
+    context: "Community event organizing platform. Company still operates as myhoc.in. Early-stage, pre-revenue."
     facts:
       - id: custard_platform
-        claim: "Built a platform for local interest-based communities using Python, SQL, and MongoDB"
-        detail: "Owned backend architecture and product direction; ran early-user outreach across India."
+        claim: "Co-founded a community event platform (now myhoc.in) — built backend using Python, SQL, and MongoDB; owned architecture, product direction, and early community outreach"
+        detail: "Helped passionate communities organize events and generate revenue. Still operating."
         numbers_used: []
         verified: true
-        resume_use: "1 line. Shows founder ownership + backend fundamentals."
+        resume_use: "1 line. Shows founder ownership, backend fundamentals, and a living product."
 
     stack:
       languages: [Python, SQL]
       databases: [MongoDB]
 
 projects:
-  # ── STRONGEST PUBLIC ARTIFACT ──
-  - name: govRAG
-    github: github.com/adsha27
-    stack: [Python]
+  - name: Birbal
+    github: github.com/adsha27/birbal
+    stack: [Python, Telegram Bot API, Ollama, GBrain]
     priority: high
+    scope_indicators:
+      telegram_commands: 17    # start, reset, model, think, remember, recall, gbrain, gstack, code, diff, apply, reject, agent_jobs, status, stop, restart + message handler
+      routing_modes: 4          # grounded, memory_fast, casual, standard
+      llm_providers: 3          # Ollama (local), Claude (cloud), Gemini (cloud)
+      tool_functions: 8         # web_search, fetch_page, search_reddit, search_twitter, wiki_lookup, get_bookmarks, sync_bookmarks, shell_exec
     facts:
-      - id: govrag_summary
-        claim: "RAG system over government policy documents"
-        detail: "Closest public artifact to RWF production work. ACTION: confirm README is present and runnable before citing."
-        numbers_used: []
-        verified: false  # VERIFY: confirm repo has README + is runnable
-        resume_use: "Lead public project for backend/AI stream. Polish before listing."
+      - id: birbal_agent
+        claim: "Built a Telegram AI agent with 4-mode LLM routing (fast, memory-backed, web-grounded, standard), 3 provider backends (Ollama, Claude, Gemini), and GBrain durable memory with graph traversal and hot-memory facts"
+        numbers_used: [4, 3]
+        verified: true
+        resume_use: "Lead Birbal bullet — LLM system design, multi-provider, memory architecture."
 
-  - name: Interactive Interior Visualization System
-    stack: [Unity, C#]
-    priority: medium
-    facts:
-      - id: ivs_client
-        claim: "Delivered a Unity interior visualization tool for a real-estate builder"
-        detail: "Editable furniture, paint, and lighting; real-time day/night environment. Freelance delivery — real client."
+      - id: birbal_tools
+        claim: "Integrated 8 callable tools: web search, Playwright-backed page fetch, Reddit, Wikipedia, bookmark sync; 17 Telegram commands including gated shell execution and a GStack coding agent for isolated worktree runs"
+        numbers_used: [8, 17]
+        verified: true
+        resume_use: "Tool integration breadth — agent systems angle."
+
+      - id: birbal_observability
+        claim: "Built per-request observability tracking latency, token usage, tool call count, and memory retrieval across every conversation"
         numbers_used: []
         verified: true
-        resume_use: "Good differentiator — shows different domain. Lists last on technical resume."
+        resume_use: "Observability angle for AI/backend roles."
+
+  - name: govRAG
+    github: github.com/adsha27/govrag
+    stack: [Python, FastAPI, FAISS, sentence-transformers, Ollama]
+    priority: high
+    facts:
+      - id: govrag_pipeline
+        claim: "Built an end-to-end RAG pipeline: PDF ingestion with OCR, text chunking into 500-character segments with 50-character overlap, sentence-transformer embeddings at 384 dimensions, and FAISS vector index"
+        numbers_used: [500, 50, 384]
+        verified: true
+        resume_use: "Shows RAG implementation depth."
+
+      - id: govrag_mcq
+        claim: "Generated exam-style multiple-choice questions from indexed chunks via local Ollama LLM; served through FastAPI with document upload, semantic search, and MCQ generation endpoints"
+        numbers_used: []
+        verified: true
+        resume_use: "LLM + FastAPI integration, product completeness."
+
+  - name: ai-tryon
+    github: github.com/adsha27/ai-tryon
+    stack: [Next.js, TypeScript, FASHN.ai API]
+    priority: medium
+    facts:
+      - id: aitryon_core
+        claim: "Built a virtual clothing try-on web app: upload a person photo and a garment image, get photorealistic results in 5 to 17 seconds via FASHN.ai async API"
+        numbers_used: [5, 17]
+        verified: true
+        resume_use: "Frontend + AI API integration; shows product completeness."
+
+      - id: aitryon_wardrobe
+        claim: "Implemented garment category and mode selection, real-time job state polling (queued to processing to done), and a wardrobe page to save and organize garments"
+        numbers_used: []
+        verified: true
+        resume_use: "Product depth — state machine and UX."
+
+  - name: dragnet
+    github: github.com/adsha27/dragnet
+    stack: [Python, PostgreSQL, asyncio, Stagehand, Browserbase]
+    priority: high
+    facts:
+      - id: dragnet_sourcing
+        claim: "Built a multi-source job scraper covering Greenhouse, Lever, and Ashby ATS public APIs plus LinkedIn and HN, producing 2,000 postings with full JD content and direct apply URLs"
+        numbers_used: [2000]
+        verified: true
+        resume_use: "Sourcing breadth and pipeline scale."
+
+      - id: dragnet_eligibility
+        claim: "Built an LLM eligibility classifier with checkpoint/resume that processed 945 job postings, with per-batch token tracking and incremental output flush"
+        numbers_used: [945]
+        verified: true
+        resume_use: "LLM pipeline reliability — checkpoint/resume, incremental flushing."
+
+      - id: dragnet_apply
+        claim: "Automated ATS form submission for Greenhouse, Lever, and Ashby via Stagehand and Browserbase cloud browser, with category-based resume tailoring across 4 market segments"
+        numbers_used: [4]
+        verified: true
+        resume_use: "End-to-end automation story."
+
+  - name: Interior Visualization System
+    stack: [Unity, C#]
+    priority: low
+    facts:
+      - id: ivs_client
+        claim: "Delivered a Unity 3D interior visualization tool for a real-estate builder: real-time furniture placement, paint and lighting controls, and day/night environment switching"
+        numbers_used: []
+        verified: true
+        resume_use: "Freelance delivery with a real client — different domain."
 
 skills:
   languages:
     primary: [Go, Python]
-    secondary: [SQL, TypeScript, C#]
-    note: "TypeScript is project-level. C# is Unity-specific."
+    secondary: [TypeScript, SQL, C#]
+    note: "TypeScript is project-level (ai-tryon). C# is Unity-specific."
 
   backend:
-    - FastAPI
     - REST APIs
+    - API design
+    - FastAPI
     - PostgreSQL
     - pgvector
     - MongoDB
+    - asyncio
+    - microservices
+    - system design
 
   ai_agents:
     - LLM orchestration
-    - RAG pipelines
-    - FastMCP and MCP tool design
+    - RAG (Retrieval-Augmented Generation)
+    - agentic AI systems
+    - MCP tool design
+    - FastMCP
+    - Ollama local inference
+    - sentence-transformers
+    - embeddings
+    - FAISS vector search
+    - vector databases
+    - NLP
     - prompt engineering
-    - evals
+    - model evaluation
     - multilingual agent systems
 
   infra:
@@ -214,9 +294,12 @@ skills:
     - Linux
     - Git
     - pprof profiling
+    - load testing
+    - Browserbase
 
   observability:
     - token-usage instrumentation
+    - distributed tracing
     - tool call analytics
     - trace/span context
 
@@ -229,9 +312,12 @@ education:
 # ── QUICK NUMBER REFERENCE ──
 # Use these to write facts.yaml entries; use sparingly in actual bullets.
 # 172 commits, #2 contributor (4 months at RWF)
-# 2 production bots, 6 backend routes, 5 languages, 8-scenario eval pack
-# 1,000-user stress test, 100 aups, 115s→6s concurrency fix [INTERVIEW PREP REQUIRED]
+# 2 production bots, 5 languages, 8-scenario eval pack
+# 1,000-user stress test, 100 aups, 115s -> 6s concurrency fix
 # 156 conversations, 72 user-active (live pilot) — never claim higher user count
-# 563 tool calls, 79.6% success rate, 29 tools invoked live — interview story, not resume headline
+# 563 tool calls, 79.6% success rate — interview story, not resume headline
 # 9,722-school dataset, 377-chunk RAG corpus from 13 PDFs
 # 46 MCP tools, 63 test files, 148 test cases — scope indicators, do NOT cite as bullets
+# govRAG: 500-char chunks, 50-char overlap, 384-dim embeddings (sentence-transformers)
+# ai-tryon: 5-17 second results via FASHN.ai
+# dragnet: 945 jobs processed, 2,000 sourced, 4 market categories

@@ -59,7 +59,7 @@ async def complete(
 
     async with _ollama_sem:
         try:
-            async with httpx.AsyncClient(base_url=OLLAMA_BASE, timeout=300.0) as client:
+            async with httpx.AsyncClient(base_url=OLLAMA_BASE, timeout=600.0) as client:
                 resp = await client.post("/chat/completions", json=payload)
                 resp.raise_for_status()
                 data = resp.json()

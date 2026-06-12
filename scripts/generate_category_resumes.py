@@ -40,34 +40,59 @@ def _typst_escape(value: object) -> object:
     return value
 
 
+def _latex_escape(value: object) -> object:
+    if isinstance(value, str):
+        # Order matters: backslash first
+        value = value.replace("\\", r"\textbackslash{}")
+        value = value.replace("#",  r"\#")
+        value = value.replace("&",  r"\&")
+        value = value.replace("%",  r"\%")
+        value = value.replace("$",  r"\$")
+        value = value.replace("_",  r"\_")
+        value = value.replace("^",  r"\^{}")
+        value = value.replace("~",  r"\textasciitilde{}")
+    return value
+
+
 JINJA_ENV = Environment(
     loader=FileSystemLoader(str(settings.root / "resume_templates")),
     autoescape=False,
     finalize=_typst_escape,
 )
 
-SYSTEM_PROMPT = """You are a resume tailoring assistant. Given a job category archetype and sample job descriptions, select and rephrase experience bullets from a candidate's fact sheet to produce the best resume variant for that category.
+LATEX_JINJA_ENV = Environment(
+    loader=FileSystemLoader(str(settings.root / "resume_templates")),
+    autoescape=False,
+    finalize=_latex_escape,
+    comment_start_string="<{#",   # avoid conflict with LaTeX {#1} in \newcommand
+    comment_end_string="#}>",
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
+SYSTEM_PROMPT = """You are a resume tailoring assistant. Given a job category and sample job descriptions, select and rephrase experience bullets from a candidate's fact sheet to produce the strongest possible resume for that category.
 
 STRICT RULES:
-1. Every number you use MUST appear in the provided facts. Do not invent metrics.
-2. Do NOT use raw internal counts as resume bullets (46 MCP tools, 148 tests, 88636 lines, 563 tool calls).
-3. Use scope numbers to frame impact, not as standalone claims.
-4. Select 3-5 bullets per role. Lead with what changed, not what you did.
-5. Write a 2-sentence summary connecting the candidate to the target category. Direct. No "excited to" or "passionate about".
-6. Never use em-dashes. Use commas, periods, or plain dashes.
-7. Write like a person. No buzzwords: leverage, spearhead, synergy, facilitate.
-8. For the 115s to 6s benchmark: only cite exact numbers if interview_prep_required is false.
+1. Every number you use MUST appear verbatim in the provided facts. Do not invent or estimate metrics.
+2. SCOPE INDICATORS are labelled [SCOPE] in the facts. NEVER use scope indicators as resume bullets. They exist only to help you understand scale. Do not cite: 46 MCP tools, 148 tests, 88636 lines, 563 tool calls, 79.6% success rate.
+3. RESUME-SAFE FACTS are labelled [RESUME-SAFE FACTS]. Use ONLY these for bullets. Every bullet must be traceable to a named fact.
+4. Prefer facts that have numbers in them. A bullet with a concrete number (1,000 users, 156 conversations, 115s to 6s, 5 languages, 2 bots) is worth 3 generic bullets.
+5. For right_walk: write exactly 5 bullets. For mercury_digital: write exactly 2 bullets. For custard: write exactly 1 bullet. Lead with what changed, not what you did.
+6a. Projects: always include dragnet and Birbal. Add govRAG only for AI/ML categories. Do NOT use govRAG for backend/SDE categories — dragnet is the stronger backend project.
+6. Write a 2-sentence summary connecting the candidate to the target category. Direct. No "excited to" or "passionate about".
+7. Never use em-dashes. Use commas, periods, or plain dashes.
+8. Write like a person. No buzzwords: leverage, spearhead, synergy, facilitate.
 
 Return valid JSON only, no markdown."""
 
 SELECTION_SCHEMA = """{
   "summary": "2-sentence summary for this category of role",
   "experience": [
-    {"role_id": "right_walk", "bullets": ["...", "...", "..."]},
+    {"role_id": "right_walk", "bullets": ["...", "...", "...", "...", "..."]},
     {"role_id": "mercury_digital", "bullets": ["...", "..."]},
-    {"role_id": "custard", "bullets": ["...", "..."]}
+    {"role_id": "custard", "bullets": ["..."]}
   ],
-  "include_projects": ["project names most relevant to this category"],
+  "include_projects": ["dragnet", "Birbal"],
   "skills_emphasis": {
     "languages": "comma-separated, most relevant first",
     "backend": "comma-separated frameworks and tools",
@@ -129,6 +154,12 @@ Return JSON matching this schema:
     logger.info(f"Generating resume for: {cat_info['label']}")
     selection = await complete_json(SYSTEM_PROMPT, prompt, max_tokens=2048)
 
+    # Enforce project selection — LLM guidance is advisory; code is authoritative
+    if "ai" in category:
+        selection["include_projects"] = ["dragnet", "Birbal", "govRAG"]
+    else:
+        selection["include_projects"] = ["dragnet", "Birbal"]
+
     typst_source = _render_typst(selection, facts, cat_info)
 
     firewall = check_resume_against_facts(typst_source)
@@ -146,11 +177,33 @@ Return JSON matching this schema:
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode == 0:
-            logger.info(f"Compiled: {pdf_path}")
+            logger.info(f"Compiled (typst): {pdf_path}")
         else:
             logger.warning(f"typst compile failed for {category}:\n{result.stderr[:300]}")
     except Exception as e:
-        logger.warning(f"Could not compile PDF for {category}: {e}")
+        logger.warning(f"Could not compile typst PDF for {category}: {e}")
+
+    # LaTeX output
+    latex_source = _render_latex(selection, facts, cat_info)
+    tex_path = OUTPUT_DIR / f"{category}.tex"
+    tex_path.write_text(latex_source)
+    logger.info(f"Written: {tex_path}")
+
+    try:
+        import shutil
+        if shutil.which("tectonic"):
+            result = subprocess.run(
+                ["tectonic", str(tex_path), "--outdir", str(OUTPUT_DIR)],
+                capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode == 0:
+                logger.info(f"Compiled (latex): {tex_path.with_suffix('.pdf')}")
+            else:
+                logger.warning(f"tectonic failed for {category}:\n{result.stderr[:300]}\n{result.stdout[:300]}")
+        else:
+            logger.warning("tectonic not found — skipping LaTeX PDF compile")
+    except Exception as e:
+        logger.warning(f"Could not compile LaTeX PDF for {category}: {e}")
 
 
 def _render_typst(selection: dict, facts: dict, cat_info: dict) -> str:
@@ -189,7 +242,7 @@ def _render_typst(selection: dict, facts: dict, cat_info: dict) -> str:
             projects.append({
                 "name": proj["name"],
                 "stack": ", ".join(proj.get("stack", [])),
-                "bullets": [f["claim"] for f in proj.get("facts", [])],
+                "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
             })
 
     education = [
@@ -212,6 +265,82 @@ def _render_typst(selection: dict, facts: dict, cat_info: dict) -> str:
         email_display=identity["email"].replace("@", r"\@"),
         phone=identity["phone"],
         github=identity["github"],
+        linkedin=identity.get("linkedin", ""),
+        summary=selection.get("summary", ""),
+        experience=experience,
+        projects=projects,
+        skills={
+            "languages": skills_sel.get("languages", ", ".join(
+                skills_defaults.get("languages", {}).get("primary", []) +
+                skills_defaults.get("languages", {}).get("secondary", [])
+            )),
+            "backend": skills_sel.get("backend", ", ".join(skills_defaults.get("backend", []))),
+            "ai_agents": skills_sel.get("ai_agents", ", ".join(skills_defaults.get("ai_agents", []))),
+            "infra": skills_sel.get("infra", ", ".join(skills_defaults.get("infra", []))),
+        },
+        education=education,
+    )
+
+
+def _render_latex(selection: dict, facts: dict, cat_info: dict) -> str:
+    template = LATEX_JINJA_ENV.get_template("resume.tex.jinja")
+    from datetime import datetime
+
+    identity = facts["identity"]
+    skills_sel = selection.get("skills_emphasis", {})
+    skills_defaults = facts.get("skills", {})
+
+    roles_map = {
+        "right_walk": next((e for e in facts["experience"] if "Right Walk" in e["company"]), None),
+        "mercury_digital": next((e for e in facts["experience"] if "Mercury" in e.get("company", "")), None),
+        "custard": next((e for e in facts["experience"] if "Custard" in e.get("company", "")), None),
+    }
+
+    experience = []
+    for role_sel in selection.get("experience", []):
+        role_id = role_sel.get("role_id", "")
+        role_data = roles_map.get(role_id)
+        if not role_data:
+            continue
+        experience.append({
+            "title": role_data["role"],
+            "company": role_data["company"],
+            "location": role_data["location"],
+            "start": role_data["start"],
+            "end": role_data["end"],
+            "bullets": role_sel.get("bullets", []),
+        })
+
+    included_project_names = {p.lower() for p in selection.get("include_projects", [])}
+    projects = []
+    for proj in facts.get("projects", []):
+        if proj["name"].lower() in included_project_names:
+            projects.append({
+                "name": proj["name"],
+                "stack": ", ".join(proj.get("stack", [])),
+                "bullets": [f["claim"] for f in proj.get("facts", [])[:2]],
+            })
+
+    education = [
+        {
+            "degree": edu["degree"],
+            "institution": edu["institution"],
+            "cgpa": edu["cgpa"],
+            "graduation": edu.get("graduation", ""),
+        }
+        for edu in facts.get("education", [])
+    ]
+
+    return template.render(
+        generated_at=datetime.utcnow().isoformat(),
+        company=cat_info["label"],
+        title=cat_info["description"][:60],
+        name=identity["name"],
+        tagline=identity["tagline"],
+        email=identity["email"],
+        phone=identity["phone"],
+        github=identity["github"],
+        linkedin=identity.get("linkedin", ""),
         summary=selection.get("summary", ""),
         experience=experience,
         projects=projects,

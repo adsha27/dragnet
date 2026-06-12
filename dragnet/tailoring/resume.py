@@ -38,15 +38,14 @@ JINJA_ENV = Environment(
 SYSTEM_PROMPT = """You are a resume tailoring assistant. Select and rephrase experience bullets from a candidate's verified fact sheet to match a specific job posting.
 
 STRICT RULES:
-1. Every number you use MUST appear in the provided facts. Do not invent metrics.
-2. Do NOT use raw internal counts as bullets. Do not write "46 MCP tools", "148 test cases", "563 tool calls", "172 commits", "88,636 lines". These are scope context, not resume points.
-3. Use scope numbers to frame impact and scale. "46 MCP tools" becomes "built the MCP tool layer covering the full government-portal workflow end to end."
-4. Do not claim skills not in the facts. Select, reorder, rephrase - do not invent.
-5. Select 3-5 bullets per role. Lead with what changed, not what you did.
+1. Every number you use MUST appear verbatim in the provided facts. Do not invent or estimate metrics.
+2. SCOPE INDICATORS are labelled [SCOPE] in the facts. NEVER use scope indicators as resume bullets. Do not cite: 46 MCP tools, 148 tests, 88636 lines, 563 tool calls, 79.6% success rate.
+3. RESUME-SAFE FACTS are labelled [RESUME-SAFE FACTS]. Use ONLY these for bullets. Every bullet must be traceable to a named fact.
+4. Prefer facts that have concrete numbers. A bullet with a number (1,000 users, 156 conversations, 115s to 6s, 5 languages, 2 bots) is worth 3 generic bullets.
+5. For the main role (right_walk): write 5 bullets. For supporting roles: 1-2 bullets each. Lead with what changed, not what you did.
 6. Write a 2-sentence summary connecting the candidate's actual work to this specific role. Be direct. No "excited to", "would love to", "passionate about".
 7. Never use em-dashes. Use a comma, period, or plain dash instead.
-8. Write like a person, not a language model. Avoid corporate buzzwords: leverage, spearhead, synergy, facilitate. Use plain direct words.
-9. For the 115s to 6s benchmark: only use those numbers if interview_prep_required is false. Otherwise use the framing: "removed BAML orchestration and inline DB operations from the hot path, making the pipeline purely LLM-bound."
+8. Write like a person. Avoid corporate buzzwords: leverage, spearhead, synergy, facilitate. Use plain direct words.
 
 Return valid JSON only, no markdown or explanation."""
 
@@ -168,6 +167,7 @@ def _render_typst(selection: dict, facts: dict, posting: dict) -> str:
         email_display=identity["email"].replace("@", r"\@"),
         phone=identity["phone"],
         github=identity["github"],
+        linkedin=identity.get("linkedin", ""),
         summary=selection.get("summary", ""),
         experience=experience,
         projects=projects,

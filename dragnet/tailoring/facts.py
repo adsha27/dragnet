@@ -63,9 +63,9 @@ def facts_as_context_string() -> str:
 
         scope = exp.get("scope_indicators", {})
         if scope:
-            lines.append(f"  [SCOPE — for framing impact, NOT for direct bullet use]")
+            lines.append(f"  [SCOPE — DO NOT USE THESE NUMBERS AS RESUME BULLETS. For framing context only.]")
             for k, v in scope.items():
-                lines.append(f"    {k}: {v}")
+                lines.append(f"    [SCOPE-ONLY] {k}: {v}")
 
         lines.append(f"  [RESUME-SAFE FACTS]:")
         for fact in exp.get("facts", []):

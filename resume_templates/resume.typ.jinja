@@ -3,39 +3,39 @@
 // Posting: {{ company }} — {{ title }}
 
 #set page(
-  margin: (x: 0.65in, y: 0.55in),
-  paper: "us-letter",
+  margin: (x: 0.5in, y: 0.42in),
+  paper: "a4",
 )
-#set text(font: ("Helvetica Neue", "Helvetica", "Arial"), size: 10.5pt, fill: black)
-#set par(leading: 0.6em)
+#set text(font: ("Helvetica Neue", "Helvetica", "Arial"), size: 10pt, fill: black)
+#set par(leading: 0.58em)
 #show link: underline
 
 // ── HEADER ──────────────────────────────────────────────────────────────────
 #align(center)[
-  #text(size: 21pt, weight: "bold")[{{ name }}]
-  #linebreak()
-  #v(-0.2em)
-  #text(size: 10pt)[
+  #text(size: 19pt, weight: "bold")[{{ name }}]
+  #v(0.1em)
+  #text(size: 9.5pt)[
     {{ tagline }} #h(0.4em) · #h(0.4em)
     #link("mailto:{{ email }}")[{{ email_display }}] #h(0.4em) · #h(0.4em)
     {{ phone }} #h(0.4em) · #h(0.4em)
-    #link("https://{{ github }}")[{{ github }}]
+    #link("https://{{ github }}")[{{ github }}] #h(0.4em) · #h(0.4em)
+    #link("https://{{ linkedin }}")[{{ linkedin }}]
   ]
 ]
 
-#v(0.25em)
+#v(0.15em)
 #line(length: 100%, stroke: 0.5pt)
-#v(0.25em)
+#v(0.15em)
 
 // ── SUMMARY ─────────────────────────────────────────────────────────────────
-#text(size: 10.5pt)[{{ summary }}]
+#text(size: 10pt)[{{ summary }}]
 
-#v(0.5em)
+#v(0.3em)
 
 // ── EXPERIENCE ──────────────────────────────────────────────────────────────
-#text(weight: "bold", size: 11pt)[EXPERIENCE]
+#text(weight: "bold", size: 10.5pt)[EXPERIENCE]
 #line(length: 100%, stroke: 0.4pt)
-#v(0.2em)
+#v(0.15em)
 
 {% for role in experience %}
 #grid(
@@ -43,57 +43,57 @@
   [#text(weight: "bold")[{{ role.title }}]], [#text[{{ role.start }} – {{ role.end }}]],
   [#text(style: "italic")[{{ role.company }}, {{ role.location }}]], [],
 )
-#v(0.1em)
+#v(0.05em)
 #list(
 {% for bullet in role.bullets %}
   [{{ bullet }}],
 {% endfor %}
 )
-#v(0.3em)
+#v(0.2em)
 {% endfor %}
 
 // ── PROJECTS ────────────────────────────────────────────────────────────────
 {% if projects %}
-#text(weight: "bold", size: 11pt)[PROJECTS]
+#text(weight: "bold", size: 10.5pt)[PROJECTS]
 #line(length: 100%, stroke: 0.4pt)
-#v(0.2em)
+#v(0.15em)
 
 {% for proj in projects %}
 #grid(
   columns: (1fr, auto),
   [#text(weight: "bold")[{{ proj.name }}]], [#text(style: "italic")[{{ proj.stack }}]],
 )
-#v(0.1em)
+#v(0.05em)
 #list(
 {% for bullet in proj.bullets %}
   [{{ bullet }}],
 {% endfor %}
 )
-#v(0.3em)
+#v(0.2em)
 {% endfor %}
 {% endif %}
 
 // ── SKILLS ──────────────────────────────────────────────────────────────────
-#text(weight: "bold", size: 11pt)[TECHNICAL SKILLS]
+#text(weight: "bold", size: 10.5pt)[TECHNICAL SKILLS]
 #line(length: 100%, stroke: 0.4pt)
-#v(0.2em)
+#v(0.1em)
 
 #table(
   columns: (auto, 1fr),
   stroke: none,
-  inset: (x: 0pt, y: 3pt),
+  inset: (x: 0pt, y: 2pt),
   [#text(weight: "bold")[Languages:]], [{{ skills.languages }}],
   [#text(weight: "bold")[Backend:]], [{{ skills.backend }}],
   [#text(weight: "bold")[AI and Agents:]], [{{ skills.ai_agents }}],
   [#text(weight: "bold")[Infrastructure:]], [{{ skills.infra }}],
 )
 
-#v(0.3em)
+#v(0.2em)
 
 // ── EDUCATION ───────────────────────────────────────────────────────────────
-#text(weight: "bold", size: 11pt)[EDUCATION]
+#text(weight: "bold", size: 10.5pt)[EDUCATION]
 #line(length: 100%, stroke: 0.4pt)
-#v(0.2em)
+#v(0.1em)
 
 {% for edu in education %}
 #grid(
