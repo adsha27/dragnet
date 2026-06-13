@@ -69,12 +69,14 @@ def _pdf_fill_pct(pdf_path: Path) -> float:
 
 def _typst_escape(value: object) -> object:
     if isinstance(value, str):
-        return value.replace("#", r"\#").replace("]", r"\]")
+        value = value.replace("—", "-").replace("–", "-")  # em/en dash -> plain
+        value = value.replace("#", r"\#").replace("]", r"\]")
     return value
 
 
 def _latex_escape(value: object) -> object:
     if isinstance(value, str):
+        value = value.replace("—", "-").replace("–", "-")  # em/en dash -> plain
         # Order matters: backslash first
         value = value.replace("\\", r"\textbackslash{}")
         value = value.replace("#",  r"\#")
