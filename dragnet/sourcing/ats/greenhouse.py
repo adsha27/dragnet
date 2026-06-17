@@ -5,7 +5,9 @@ No auth required. Returns structured JSON with full job content.
 """
 
 import hashlib
+import html
 import logging
+import re
 from datetime import datetime
 
 import httpx
@@ -37,7 +39,9 @@ async def fetch_postings(slug: str, company_name: str) -> list[dict]:
 def _normalize(job: dict, slug: str, company_name: str) -> dict:
     content_text = ""
     if "content" in job:
-        content_text = job["content"]
+        raw = html.unescape(job["content"])
+        content_text = re.sub(r"<[^>]+>", " ", raw)
+        content_text = re.sub(r"\s{2,}", " ", content_text).strip()
 
     location = ""
     if job.get("location"):

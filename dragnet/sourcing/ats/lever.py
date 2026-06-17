@@ -38,14 +38,19 @@ def _normalize(job: dict, slug: str, company_name: str) -> dict:
     location = job.get("categories", {}).get("location", "")
     commitment = job.get("categories", {}).get("commitment", "")
 
+    import html as html_mod, re
+
+    def strip_html(s: str) -> str:
+        return re.sub(r"\s{2,}", " ", re.sub(r"<[^>]+>", " ", html_mod.unescape(s))).strip()
+
     content_parts = []
     if job.get("description"):
-        content_parts.append(job["description"])
+        content_parts.append(strip_html(job["description"]))
     for section in job.get("lists", []):
-        content_parts.append(section.get("text", ""))
-        content_parts.append(" ".join(section.get("content", [])))
+        content_parts.append(strip_html(section.get("text", "")))
+        content_parts.append(" ".join(strip_html(s) for s in section.get("content", [])))
     if job.get("additional"):
-        content_parts.append(job["additional"])
+        content_parts.append(strip_html(job["additional"]))
 
     content_text = " ".join(content_parts)
 

@@ -39,7 +39,10 @@ def _normalize(job: dict, slug: str, company_name: str) -> dict:
     elif job.get("isRemote"):
         location = "Remote"
 
-    content_text = job.get("descriptionHtml", "") or job.get("descriptionPlain", "")
+    import html as html_mod, re
+    raw = job.get("descriptionHtml", "") or job.get("descriptionPlain", "")
+    raw = html_mod.unescape(raw)
+    content_text = re.sub(r"\s{2,}", " ", re.sub(r"<[^>]+>", " ", raw)).strip()
 
     return {
         "external_id": job.get("id", ""),
