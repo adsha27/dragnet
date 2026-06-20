@@ -10,10 +10,14 @@ if ! command -v python3.12 &>/dev/null && ! python3 --version | grep -q "3.12"; 
     exit 1
 fi
 
-# Python env
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+# Python env — use uv for reproducible installs
+if command -v uv &>/dev/null; then
+    uv sync
+else
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -e ".[dev]"
+fi
 
 # Playwright browsers (needed by Stagehand)
 playwright install chromium
