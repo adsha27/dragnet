@@ -25,18 +25,25 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# ── OpenTelemetry setup ───────────────────────────────────────────────────────
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-
-_provider = TracerProvider(resource=Resource.create({"service.name": "dragnet-eligibility"}))
-# Console exporter — every span prints one line to stderr as structured JSON
-_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
-trace.set_tracer_provider(_provider)
-tracer = trace.get_tracer("dragnet.eligibility")
+# ── OpenTelemetry setup (optional) ───────────────────────────────────────────
+try:
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    _provider = TracerProvider(resource=Resource.create({"service.name": "dragnet-eligibility"}))
+    _provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    trace.set_tracer_provider(_provider)
+    tracer = trace.get_tracer("dragnet.eligibility")
+except ImportError:
+    from contextlib import contextmanager
+    class _NoopSpan:
+        def set_attribute(self, *a, **kw): pass
+    class _NoopTracer:
+        @contextmanager
+        def start_as_current_span(self, name):
+            yield _NoopSpan()
+    tracer = _NoopTracer()
 
 LOG_FILE = Path("output/eligibility.log")
 logging.basicConfig(

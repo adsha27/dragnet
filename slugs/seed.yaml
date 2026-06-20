@@ -3,43 +3,11 @@
 # Sources: YC companies, remote-first AI/backend cos, Indian tech cos (Bangalore/Delhi)
 
 greenhouse:
-  # Global-remote, EOR-friendly
-  - company: Posthog
-    slug: posthog
-  - company: Linear
-    slug: linear
-  - company: Liveblocks
-    slug: liveblocks
-  - company: Cal.com
-    slug: calcom
-  - company: Airbyte
-    slug: airbyte
+  # Global-remote — verified working slugs
   - company: Temporal
     slug: temporaltechnologies
-  - company: Apify
-    slug: apify
-  - company: Sourcegraph
-    slug: sourcegraph
-  - company: Supabase
-    slug: supabase
   - company: GitLab
     slug: gitlab
-  - company: Fly.io
-    slug: fly-io
-  - company: Neon
-    slug: neondatabase
-  - company: Resend
-    slug: resend
-  - company: Tinybird
-    slug: tinybird
-  - company: Oxide Computer
-    slug: oxidecomputer
-  - company: Trigger.dev
-    slug: triggerdev
-  - company: Automattic
-    slug: automattic
-  - company: Zapier
-    slug: zapier
   - company: Canonical
     slug: canonical
   - company: Elastic
@@ -54,68 +22,16 @@ greenhouse:
     slug: vercel
   - company: PlanetScale
     slug: planetscale
-  - company: Turso
-    slug: turso
-  - company: Hasura
-    slug: hasura
-  - company: Dagger
-    slug: dagger
-  - company: Depot
-    slug: depot
-  - company: Railway
-    slug: railway
-  - company: SigNoz
-    slug: signoz
 
-  # Indian tech companies (Bangalore/Delhi) - Greenhouse users
-  - company: Razorpay
-    slug: razorpay
-  - company: CRED
-    slug: dreamplug
-  - company: BrowserStack
-    slug: browserstack
+  # Indian tech — verified working slugs
   - company: Postman
     slug: postman
-  - company: slice
-    slug: sliceit
-  - company: Juspay
-    slug: juspay
-  - company: Porter
-    slug: porter
-  - company: Darwinbox
-    slug: darwinbox
   - company: Groww
     slug: groww
-  - company: Zepto
-    slug: zepto
-  - company: Chargebee
-    slug: chargebee
-  - company: Freshworks
-    slug: freshworks
-  - company: Unacademy
-    slug: unacademy
-  - company: Lenskart
-    slug: lenskart
-  - company: Jupiter
-    slug: jupiter-money
-  - company: Fi Money
-    slug: epifi
-  - company: Leadsquared
-    slug: leadsquared
   - company: Druva
     slug: druva
-  - company: Icertis
-    slug: icertis
-  - company: Mindtickle
-    slug: mindtickle
   - company: Appsflyer
     slug: appsflyer
-  - company: Gupshup
-    slug: gupshup
-  - company: Cashfree
-    slug: cashfree
-  - company: Setu
-    slug: setu
 
 lever:
   # Global remote
@@ -188,6 +104,16 @@ lever:
 
 ashby:
   # Global remote — AI/infra companies
+  - company: Posthog
+    slug: posthog
+  - company: Linear
+    slug: linear
+  - company: Airbyte
+    slug: airbyte
+  - company: Supabase
+    slug: supabase
+  - company: Zapier
+    slug: zapier
   - company: Oxide Computer
     slug: oxide
   - company: Liveblocks
@@ -208,14 +134,8 @@ ashby:
     slug: daily
   - company: Browserbase
     slug: browserbase
-  - company: Stagehand
-    slug: stagehand
   - company: Windmill
     slug: windmill
-  - company: Buildkite
-    slug: buildkite
-  - company: Drifting in Space
-    slug: driftinginspace
   - company: Zed Industries
     slug: zed
   - company: Warp
@@ -238,6 +158,8 @@ ashby:
     slug: mistral
   - company: Groq
     slug: groq
+  - company: Sourcegraph
+    slug: sourcegraph
 
   # Indian tech — Ashby users
   - company: Hyperface
