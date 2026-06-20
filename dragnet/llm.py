@@ -1,12 +1,14 @@
 """
-Unified LLM client routing to local Qwen3 via Ollama.
-Ollama runs an OpenAI-compatible API at localhost:11434.
-Uses qwen3:14b for all tasks (classification + tailoring).
+Unified LLM client.
+Default: local Qwen3 via Ollama (cost-free, CPU-bound, slow for large batches).
+Fallback: Anthropic API when ANTHROPIC_API_KEY is set and ollama is unreachable
+          OR when USE_ANTHROPIC=1 env var is set for fast one-off batch tasks.
 """
 
 import asyncio
 import json
 import logging
+import os
 from dataclasses import dataclass
 
 import httpx
@@ -27,23 +29,32 @@ class LLMResponse:
     model: str
 
 
+def _use_anthropic() -> bool:
+    return os.environ.get("USE_ANTHROPIC", "").lower() in ("1", "true", "yes")
+
+
 async def complete(
     system: str,
     user: str,
     json_mode: bool = False,
     max_tokens: int = 1024,
 ) -> LLMResponse:
-    """
-    Call Qwen3 via Ollama. Returns the response text.
-    Appends /no_think to system prompt to skip thinking tokens in structured tasks.
-    """
-    model = settings.ollama_model
+    if _use_anthropic() and settings.anthropic_api_key:
+        return await _complete_anthropic(system, user, json_mode, max_tokens)
+    return await _complete_ollama(system, user, json_mode, max_tokens)
 
+
+async def _complete_ollama(
+    system: str,
+    user: str,
+    json_mode: bool = False,
+    max_tokens: int = 1024,
+) -> LLMResponse:
+    model = settings.ollama_model
     messages = [
         {"role": "system", "content": system + ("\n/no_think" if json_mode else "")},
         {"role": "user", "content": user},
     ]
-
     payload: dict = {
         "model": model,
         "messages": messages,
@@ -53,7 +64,6 @@ async def complete(
             "temperature": 0.3 if json_mode else 0.7,
         },
     }
-
     if json_mode:
         payload["format"] = "json"
 
@@ -75,6 +85,40 @@ async def complete(
             raise
 
 
+async def _complete_anthropic(
+    system: str,
+    user: str,
+    json_mode: bool = False,
+    max_tokens: int = 1024,
+) -> LLMResponse:
+    model = settings.classification_model  # claude-haiku-4-5
+    headers = {
+        "x-api-key": settings.anthropic_api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    payload: dict = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [{"role": "user", "content": user}],
+    }
+    if json_mode:
+        # Haiku respects JSON instruction in system prompt — no special param needed
+        pass
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            json=payload,
+            headers=headers,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        text = data["content"][0]["text"]
+        return LLMResponse(content=text.strip(), model=model)
+
+
 async def complete_json(system: str, user: str, max_tokens: int = 1024) -> dict | list:
     """Call LLM and parse JSON response (object or array). Raises ValueError on bad JSON."""
     response = await complete(system, user, json_mode=True, max_tokens=max_tokens)
@@ -82,7 +126,6 @@ async def complete_json(system: str, user: str, max_tokens: int = 1024) -> dict 
         return json.loads(response.content)
     except json.JSONDecodeError:
         import re
-        # Match outermost JSON object OR array
         match = re.search(r'(\[.*\]|\{.*\})', response.content, re.DOTALL)
         if match:
             return json.loads(match.group())
