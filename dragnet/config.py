@@ -63,10 +63,6 @@ class Settings(BaseSettings):
         return self.root / "facts.yaml"
 
     @property
-    def resume_template_path(self) -> Path:
-        return self.root / "resume_templates" / "base.typ"
-
-    @property
     def output_dir(self) -> Path:
         d = self.root / "output"
         d.mkdir(exist_ok=True)

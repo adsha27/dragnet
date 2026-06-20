@@ -10,16 +10,6 @@ if ! command -v python3.12 &>/dev/null && ! python3 --version | grep -q "3.12"; 
     exit 1
 fi
 
-# Typst — for resume PDF generation
-if ! command -v typst &>/dev/null; then
-    echo "Installing typst..."
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        brew install typst || curl -fsSL https://typst.app/install.sh | sh
-    else
-        curl -fsSL https://typst.app/install.sh | sh
-    fi
-fi
-
 # Python env
 python3 -m venv .venv
 source .venv/bin/activate

@@ -1,19 +1,19 @@
 """
 M3 — Resume generator.
 LLM selects + orders bullets from facts.yaml for a specific posting.
-Generates Typst source → compiles to PDF → runs firewall check.
+Generates HTML → compiles to PDF via WeasyPrint → runs firewall check.
 All numeric claims in output must exist in facts.yaml or submission is blocked.
 """
 
 import hashlib
-import json
 import logging
-import shutil
-import subprocess
-from datetime import datetime
+import warnings
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
+warnings.filterwarnings("ignore")
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from weasyprint import HTML
 
 from dragnet.config import settings
 from dragnet.llm import complete_json
@@ -22,17 +22,9 @@ from dragnet.tailoring.firewall import FirewallResult, check_resume_against_fact
 
 logger = logging.getLogger(__name__)
 
-def _typst_escape(value: object) -> object:
-    if isinstance(value, str):
-        # Escape Typst special chars that break content mode
-        return value.replace("#", r"\#").replace("]", r"\]")
-    return value
-
-
 JINJA_ENV = Environment(
     loader=FileSystemLoader(str(settings.root / "resume_templates")),
-    autoescape=False,
-    finalize=_typst_escape,
+    autoescape=select_autoescape(["html", "jinja"]),
 )
 
 SYSTEM_PROMPT = """You are a resume tailoring assistant. Select and rephrase experience bullets from a candidate's verified fact sheet to match a specific job posting.
@@ -70,7 +62,7 @@ SELECTION_SCHEMA = """{
 async def generate_resume(posting: dict) -> tuple[Path, str]:
     """
     Generate a tailored resume for a posting.
-    Returns (pdf_path, typst_source).
+    Returns (pdf_path, html_source).
     Raises ValueError if firewall check fails.
     """
     facts_context = facts_as_context_string()
@@ -91,9 +83,9 @@ Return JSON matching this schema:
 
     selection = await complete_json(SYSTEM_PROMPT, prompt, max_tokens=2048)
 
-    typst_source = _render_typst(selection, facts, posting)
+    html_source = _render_html(selection, facts, posting)
 
-    firewall: FirewallResult = check_resume_against_facts(typst_source)
+    firewall: FirewallResult = check_resume_against_facts(html_source)
     if not firewall.passed:
         raise ValueError(f"Firewall FAIL — invented numbers: {firewall.violations}")
 
@@ -101,16 +93,17 @@ Return JSON matching this schema:
         f"{posting.get('company', '')}|{posting.get('title', '')}".encode()
     ).hexdigest()[:12]
 
-    typ_path = settings.resumes_dir / f"{posting_hash}.typ"
-    typ_path.write_text(typst_source)
+    html_path = settings.resumes_dir / f"{posting_hash}.html"
+    html_path.write_text(html_source)
 
-    pdf_path = _compile_typst(typ_path)
+    pdf_path = html_path.with_suffix(".pdf")
+    HTML(string=html_source).write_pdf(str(pdf_path))
 
-    return pdf_path, typst_source
+    return pdf_path, html_source
 
 
-def _render_typst(selection: dict, facts: dict, posting: dict) -> str:
-    template = JINJA_ENV.get_template("resume.typ.jinja")
+def _render_html(selection: dict, facts: dict, posting: dict) -> str:
+    template = JINJA_ENV.get_template("resume.html.jinja")
 
     identity = facts["identity"]
     skills_sel = selection.get("skills_emphasis", {})
@@ -138,14 +131,15 @@ def _render_typst(selection: dict, facts: dict, posting: dict) -> str:
         })
 
     included_project_names = {p.lower() for p in selection.get("include_projects", [])}
-    projects = []
-    for proj in facts.get("projects", []):
-        if proj["name"].lower() in included_project_names:
-            projects.append({
-                "name": proj["name"],
-                "stack": ", ".join(proj.get("stack", [])),
-                "bullets": [f["claim"] for f in proj.get("facts", [])],
-            })
+    projects = [
+        {
+            "name": proj["name"],
+            "stack": ", ".join(proj.get("stack", [])),
+            "bullets": [f["claim"] for f in proj.get("facts", [])],
+        }
+        for proj in facts.get("projects", [])
+        if proj["name"].lower() in included_project_names
+    ]
 
     education = [
         {
@@ -158,13 +152,9 @@ def _render_typst(selection: dict, facts: dict, posting: dict) -> str:
     ]
 
     return template.render(
-        generated_at=datetime.utcnow().isoformat(),
-        company=posting.get("company", ""),
-        title=posting.get("title", ""),
         name=identity["name"],
         tagline=identity["tagline"],
         email=identity["email"],
-        email_display=identity["email"].replace("@", r"\@"),
         phone=identity["phone"],
         github=identity["github"],
         linkedin=identity.get("linkedin", ""),
@@ -182,20 +172,3 @@ def _render_typst(selection: dict, facts: dict, posting: dict) -> str:
         },
         education=education,
     )
-
-
-def _compile_typst(typ_path: Path) -> Path:
-    if not shutil.which("typst"):
-        raise EnvironmentError("typst CLI not found. Install: https://github.com/typst/typst/releases")
-
-    pdf_path = typ_path.with_suffix(".pdf")
-    result = subprocess.run(
-        ["typst", "compile", str(typ_path), str(pdf_path)],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"typst compile failed:\n{result.stderr}")
-
-    return pdf_path

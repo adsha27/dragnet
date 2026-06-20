@@ -21,12 +21,12 @@ def check_resume_against_facts(text: str) -> FirewallResult:
     """
     Extract all standalone numbers from text and verify each exists in facts.yaml.
     Standalone = not part of a year (2023-2026), not a phone number, not a version string.
-    Only checks content sections — skips Typst template directives and comments.
+    Works with HTML source — strips tags before number extraction.
     """
     from dragnet.tailoring.facts import get_all_numbers
 
     allowed = get_all_numbers()
-    content = _extract_typst_content(text)
+    content = _extract_text_content(text)
     found_numbers = _extract_meaningful_numbers(content)
 
     violations = []
@@ -42,28 +42,10 @@ def check_resume_against_facts(text: str) -> FirewallResult:
     )
 
 
-def _extract_typst_content(source: str) -> str:
-    """
-    Extract only the content strings from Typst source — the human-visible text.
-    Strips: Typst comment lines (//), layout directive lines (#set, #show, #v, #h, etc.),
-    and the generated-at header block.
-    """
-    content_lines = []
-    for line in source.splitlines():
-        stripped = line.strip()
-        # Skip Typst comments and generator metadata
-        if stripped.startswith("//"):
-            continue
-        # Skip Typst layout directives
-        if stripped.startswith("#") and any(
-            stripped.startswith(f"#{kw}") for kw in (
-                "set", "show", "align", "v(", "h(", "line(", "pagebreak",
-                "grid(", "table(", "text(", "list(", "columns", "block(",
-            )
-        ):
-            continue
-        content_lines.append(line)
-    return "\n".join(content_lines)
+def _extract_text_content(source: str) -> str:
+    """Strip HTML tags and CSS/script blocks to get human-visible text only."""
+    source = re.sub(r"<(style|script)[^>]*>.*?</\1>", "", source, flags=re.DOTALL | re.IGNORECASE)
+    return re.sub(r"<[^>]+>", " ", source)
 
 
 def _extract_meaningful_numbers(text: str) -> set[str]:
