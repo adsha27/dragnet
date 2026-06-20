@@ -26,7 +26,7 @@ WeasyPrint pipeline is live. `global_ai.pdf` was verified at 1 page, 94.7% fill.
 
 **Lockfile tool**: `uv` is already the standard for this project (Python 3.12, pyproject.toml). `uv lock` generates `uv.lock`. Add `uv sync` to `setup.sh`.
 
-**Ponytail**: npm package `ponytail@1.0.57` by zhabinsky, "Rethinking maintenance of multiple sites." No README. Needs research before evaluation. Likely not relevant to dragnet (job automation Python pipeline) — but evaluate before deciding.
+**Ponytail**: https://github.com/DietrichGebert/ponytail — Claude Code skill enforcing minimal code generation. Benchmarks: 46% fewer LOC, 80% cost. Install via `/plugin marketplace add DietrichGebert/ponytail`. Use `/ponytail full` each session; `/ponytail-review` before every merge. Decision: INSTALL (previously marked SKIP due to confusion with unrelated npm package).
 
 ## Risks / Trade-offs
 
