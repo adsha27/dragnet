@@ -202,7 +202,7 @@ Return JSON matching this schema:
     pdf_path = html_path.with_suffix(".pdf")
 
     for attempt in range(12):
-        html_source = _render_html(selection, facts, cat_info)
+        html_source = _sanitise_dashes(_render_html(selection, facts, cat_info))
         html_path.write_text(html_source)
         try:
             HTML(string=html_source, base_url=str(OUTPUT_DIR)).write_pdf(str(pdf_path))
@@ -224,6 +224,16 @@ Return JSON matching this schema:
     fill_warn = " *** UNDERFULL ***" if 0 < fill < 85 else ""
     logger.info(f"Written: {html_path}")
     logger.info(f"Compiled: {pdf_path}  pages={_pdf_page_count(pdf_path)}  fill={fill:.1f}%{fill_warn}")
+
+
+def _sanitise_dashes(html: str) -> str:
+    """Replace em/en dashes outside CSS/style blocks with a plain hyphen."""
+    import re
+    parts = re.split(r'(<style[^>]*>.*?</style>)', html, flags=re.DOTALL | re.IGNORECASE)
+    return "".join(
+        p if p.lower().startswith("<style") else p.replace("—", "-").replace("–", "-")
+        for p in parts
+    )
 
 
 def _render_html(selection: dict, facts: dict, cat_info: dict) -> str:

@@ -86,7 +86,7 @@ Return JSON matching this schema:
 
     selection = await complete_json(SYSTEM_PROMPT, prompt, max_tokens=2048)
 
-    html_source = _render_html(selection, facts, posting)
+    html_source = _sanitise_dashes(_render_html(selection, facts, posting))
 
     firewall: FirewallResult = check_resume_against_facts(html_source)
     if not firewall.passed:
@@ -103,6 +103,15 @@ Return JSON matching this schema:
     HTML(string=html_source).write_pdf(str(pdf_path))
 
     return pdf_path, html_source
+
+
+def _sanitise_dashes(html: str) -> str:
+    import re
+    parts = re.split(r'(<style[^>]*>.*?</style>)', html, flags=re.DOTALL | re.IGNORECASE)
+    return "".join(
+        p if p.lower().startswith("<style") else p.replace("—", "-").replace("–", "-")
+        for p in parts
+    )
 
 
 def _render_html(selection: dict, facts: dict, posting: dict) -> str:

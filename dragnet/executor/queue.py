@@ -66,15 +66,22 @@ async def run_tailoring_pass(db: AsyncSession, limit: int = 50) -> int:
     for posting, application in result.all():
         apply_url = posting.apply_url or ""
 
-        # Liveness check — skip for LinkedIn (auth wall), check direct ATS URLs
-        if "linkedin.com" not in apply_url:
-            liveness = await check_liveness(apply_url)
-            if not liveness.live:
-                logger.warning(f"Dead posting {posting.id} ({liveness.reason}): {apply_url}")
-                application.state = ApplicationState.ineligible
-                await _record_transition(db, application, ApplicationState.ineligible, "liveness_check")
-                await db.commit()
-                continue
+        # LinkedIn requires login — cannot auto-apply. Queue for manual review.
+        if "linkedin.com" in apply_url:
+            application.state = ApplicationState.human_review
+            await _record_transition(db, application, ApplicationState.human_review, "linkedin_manual")
+            await db.commit()
+            count += 1
+            continue
+
+        # Liveness check for direct ATS URLs
+        liveness = await check_liveness(apply_url)
+        if not liveness.live:
+            logger.warning(f"Dead posting {posting.id} ({liveness.reason}): {apply_url}")
+            application.state = ApplicationState.ineligible
+            await _record_transition(db, application, ApplicationState.ineligible, "liveness_check")
+            await db.commit()
+            continue
 
         # Resolve category PDF
         category = (posting.raw_json or {}).get("category", "india_backend")

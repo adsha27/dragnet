@@ -19,8 +19,8 @@ identity:
   tagline: Backend / AI Engineer
 
 positioning:
-  backend: "Backend engineer building production LLM/agent systems in Go and Python — MCP tools, RAG, load benchmarking, and observability for real users."
-  ai_engineer: "AI engineer shipping production agentic systems — MCP tool layers, RAG pipelines, multilingual conversational bots serving a live pilot, with eval and observability infrastructure."
+  backend: "Backend engineer building production LLM/agent systems in Go and Python: MCP tools, RAG, load benchmarking, and observability for real users."
+  ai_engineer: "AI engineer shipping production agentic systems: MCP tool layers, RAG pipelines, multilingual conversational bots serving a live pilot, with eval and observability infrastructure."
 
 experience:
   - role: Member of Technical Staff, Backend
@@ -48,15 +48,15 @@ experience:
     # ── RESUME-SAFE FACTS (these CAN appear in resume bullets) ──
     facts:
       - id: rw_production_scope
-        claim: "Deployed 2 production WhatsApp bots serving a live pilot in 5 languages — NAPS (apprenticeship registration) and RTE (school admissions)"
+        claim: "Deployed 2 production WhatsApp bots serving a live pilot in 5 languages: NAPS (apprenticeship registration) and RTE (school admissions)"
         detail: "Languages: English, Hindi, Gujarati, Marathi, Malayalam."
         numbers_used: [2, 5]
         verified: true
         resume_use: "Frame as: production scope, real deployment, multilingual."
 
       - id: rw_mcp_tool_layer
-        claim: "Designed the MCP tool layer covering the full government-portal workflow — OTP login, eKYC, profile CRUD, semantic search, application submission, document upload"
-        detail: "46 tools total — do NOT cite 46 in the bullet itself."
+        claim: "Designed the MCP tool layer covering the full government-portal workflow: OTP login, eKYC, profile CRUD, semantic search, application submission, document upload"
+        detail: "46 tools total - do NOT cite 46 in the bullet itself."
         numbers_used: []
         verified: true
         resume_use: "Frame as: depth of API integration, end-to-end ownership, not a count."
@@ -69,9 +69,9 @@ experience:
         resume_use: "Frame as: instrumentation ownership, production debugging capability."
 
       - id: rw_concurrency_fix
-        claim: "Removed BAML orchestration and inline DB operations from the hot path, dropping a 1,000-user benchmark from 115s to 6s and hitting the pure LLM-time floor"
-        detail: "Before: BAML + DB calls in hot path. After: 1,000-user benchmark (6 sequential LLM calls, 1s stubbed latency each) dropped from 115s to 6s."
-        numbers_used: [1000, 115, 6]
+        claim: "Removed BAML orchestration and inline DB operations from the hot path, dropping a 1,000-user benchmark from 115s to 6s (95% reduction) and hitting the pure LLM-time floor"
+        detail: "Before: BAML + DB calls in hot path. After: 1,000-user benchmark (6 sequential LLM calls, 1s stubbed latency each) dropped from 115s to 6s. 6/115 = 5.2%, i.e. 94.8% reduction, round to 95%."
+        numbers_used: [1000, 115, 6, 95]
         verified: true
         interview_prep_required: false
         resume_use: "Clean architectural story. Exact numbers are interview-safe."
@@ -123,7 +123,7 @@ experience:
       5 parallel tracks: website, iOS app, Android app, AI chatbot, pricing system.
     facts:
       - id: md_hybrid_role
-        claim: "Acted as PM and hands-on engineer across a 10-person team — coordinated delivery of website, iOS app, Android app, AI chatbot, and pricing system while personally handling debugging, logging, and monitoring"
+        claim: "Acted as PM and hands-on engineer across a 10-person team, coordinated delivery of website, iOS app, Android app, AI chatbot, and pricing system while personally handling debugging, logging, and monitoring"
         detail: "Dual role: PM coordination + direct engineering. 10 devs and stakeholders."
         numbers_used: [10]
         verified: true
@@ -149,7 +149,7 @@ experience:
     context: "Community event organizing platform. Company still operates as myhoc.in. Early-stage, pre-revenue."
     facts:
       - id: custard_platform
-        claim: "Co-founded a community event platform (now myhoc.in) — built backend using Python, SQL, and MongoDB; owned architecture, product direction, and early community outreach"
+        claim: "Co-founded a community event platform (now myhoc.in), built backend using Python, SQL, and MongoDB; owned architecture, product direction, and early community outreach"
         detail: "Helped passionate communities organize events and generate revenue. Still operating."
         numbers_used: []
         verified: true
