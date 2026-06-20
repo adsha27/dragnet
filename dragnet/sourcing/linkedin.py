@@ -116,8 +116,70 @@ async def fetch_postings(
                     break
                 await asyncio.sleep(DELAY_BETWEEN_REQUESTS)
 
-    logger.info(f"LinkedIn: fetched {len(results)} unique postings")
+        # Enrich: fetch each job detail to get real apply URL + description
+        enriched = 0
+        for p in results:
+            job_id = p.get("external_id", "")
+            if not job_id:
+                continue
+            try:
+                detail = await _fetch_job_detail(client, job_id)
+                if detail.get("company_apply_url"):
+                    p["apply_url"] = detail["company_apply_url"]
+                    p["easy_apply"] = False
+                else:
+                    p["easy_apply"] = detail.get("easy_apply", True)
+                if detail.get("description"):
+                    p["content_text"] = detail["description"]
+                enriched += 1
+                await asyncio.sleep(DELAY_BETWEEN_REQUESTS)
+            except Exception as e:
+                logger.debug(f"Detail fetch failed for {job_id}: {e}")
+
+    logger.info(f"LinkedIn: fetched {len(results)} unique postings, enriched {enriched} with detail")
     return results
+
+
+async def _fetch_job_detail(client: httpx.AsyncClient, job_id: str) -> dict:
+    """
+    Fetch job detail from LinkedIn guest API.
+    Returns dict with company_apply_url (if external), easy_apply flag, and description.
+    """
+    url = JOB_DETAIL.format(job_id=job_id)
+    resp = await client.get(url)
+    if resp.status_code == 429:
+        await asyncio.sleep(30)
+        resp = await client.get(url)
+    if resp.status_code != 200:
+        return {}
+
+    html = resp.text
+
+    # Company apply URL — present when job has "Apply on company website"
+    company_apply = re.search(r'companyApplyUrl["\s]*:["\s]*([^"&<>\s]+)', html)
+    if not company_apply:
+        # Also in encoded form inside JSON-LD
+        company_apply = re.search(r'"url"\s*:\s*"(https?://(?!www\.linkedin\.com)[^"]+)"', html)
+
+    # Easy apply flag
+    easy_apply = bool(re.search(r'easyApply["\s]*:["\s]*true|f_LF=f_AL', html, re.IGNORECASE))
+
+    # Description text
+    desc_match = re.search(
+        r'class="show-more-less-html__markup[^"]*"[^>]*>(.*?)</div>',
+        html,
+        re.DOTALL,
+    )
+    description = ""
+    if desc_match:
+        description = re.sub(r"<[^>]+>", " ", desc_match.group(1)).strip()
+        description = re.sub(r"\s+", " ", description)[:3000]
+
+    return {
+        "company_apply_url": company_apply.group(1).replace("%3A", ":").replace("%2F", "/") if company_apply else None,
+        "easy_apply": easy_apply,
+        "description": description,
+    }
 
 
 async def _fetch_page(

@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     applicant_linkedin: str = "https://linkedin.com/in/adsha/"
     applicant_location: str = "Delhi, India"
 
+    # LinkedIn credentials for Easy Apply automation
+    linkedin_email: str = ""
+    linkedin_password: str = ""
+
     # Reddit OAuth (register a free app at reddit.com/prefs/apps → script type)
     reddit_client_id: str = ""
     reddit_client_secret: str = ""

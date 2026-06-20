@@ -20,7 +20,7 @@ from dragnet.db.models import Application, ApplicationState, FailureType, Postin
 from dragnet.eligibility.liveness import check_liveness
 from dragnet.eligibility.ranker import classify_and_rank_pending
 from dragnet.executor import session as browser_session
-from dragnet.executor.adapters import greenhouse, lever
+from dragnet.executor.adapters import greenhouse, lever, linkedin as linkedin_adapter
 from dragnet.tailoring.answers import generate_answers
 
 logger = logging.getLogger(__name__)
@@ -66,12 +66,16 @@ async def run_tailoring_pass(db: AsyncSession, limit: int = 50) -> int:
     for posting, application in result.all():
         apply_url = posting.apply_url or ""
 
-        # LinkedIn requires login — cannot auto-apply. Queue for manual review.
+        # LinkedIn: mark as tailored so executor handles it via linkedin_adapter
         if "linkedin.com" in apply_url:
-            application.state = ApplicationState.human_review
-            await _record_transition(db, application, ApplicationState.human_review, "linkedin_manual")
+            category = (posting.raw_json or {}).get("category", "india_backend")
+            pdf_path = _CATEGORY_RESUMES_DIR / f"{category}.pdf"
+            if pdf_path.exists():
+                application.state = ApplicationState.tailored
+                application.resume_path = str(pdf_path)
+                await _record_transition(db, application, ApplicationState.tailored, "tailoring_pass")
+                count += 1
             await db.commit()
-            count += 1
             continue
 
         # Liveness check for direct ATS URLs
@@ -148,19 +152,35 @@ async def run_executor_pass(db: AsyncSession, dry_run: bool = False) -> dict:
 
         stats["attempted"] += 1
         async with browser_session.BrowserSession() as sess:
-            if ats_type == "greenhouse":
+            apply_url = posting.apply_url or ""
+            if "linkedin.com" in apply_url:
+                submit_result = await linkedin_adapter.apply(
+                    sess, apply_url, Path(app.resume_path),
+                    answers, posting_dict, dry_run=dry_run
+                )
+                # LinkedIn adapter may discover the real ATS URL
+                if submit_result.get("failure_type") == "external_apply":
+                    real_url = submit_result.get("external_url", "")
+                    if real_url:
+                        posting.apply_url = real_url
+                        ats_type = _detect_ats(real_url)
+                        submit_result = await _dispatch_ats(
+                            sess, ats_type, real_url, Path(app.resume_path),
+                            answers, posting_dict, dry_run=dry_run
+                        )
+            elif ats_type == "greenhouse":
                 submit_result = await greenhouse.apply(
-                    sess, posting.apply_url, Path(app.resume_path),
+                    sess, apply_url, Path(app.resume_path),
                     answers, posting_dict, dry_run=dry_run
                 )
             elif ats_type == "lever":
                 submit_result = await lever.apply(
-                    sess, posting.apply_url, Path(app.resume_path),
+                    sess, apply_url, Path(app.resume_path),
                     answers, posting_dict, dry_run=dry_run
                 )
             else:
                 submit_result = await _generic_apply(
-                    sess, posting.apply_url, Path(app.resume_path),
+                    sess, apply_url, Path(app.resume_path),
                     answers, posting_dict, dry_run=dry_run
                 )
 
@@ -186,6 +206,24 @@ async def run_executor_pass(db: AsyncSession, dry_run: bool = False) -> dict:
     await db.commit()
     logger.info(f"Executor pass: {stats}")
     return stats
+
+
+def _detect_ats(url: str) -> str:
+    if "greenhouse.io" in url or "boards.greenhouse" in url:
+        return "greenhouse"
+    if "lever.co" in url:
+        return "lever"
+    if "ashbyhq.com" in url:
+        return "ashby"
+    return "unknown"
+
+
+async def _dispatch_ats(session, ats_type: str, url: str, resume_path, answers, posting, dry_run=False) -> dict:
+    if ats_type == "greenhouse":
+        return await greenhouse.apply(session, url, resume_path, answers, posting, dry_run=dry_run)
+    if ats_type == "lever":
+        return await lever.apply(session, url, resume_path, answers, posting, dry_run=dry_run)
+    return await _generic_apply(session, url, resume_path, answers, posting, dry_run=dry_run)
 
 
 async def _generic_apply(session, apply_url, resume_path, answers, posting, dry_run=False) -> dict:

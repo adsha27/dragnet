@@ -16,14 +16,10 @@ greenhouse:
     slug: airbyte
   - company: Temporal
     slug: temporaltechnologies
-  - company: Encore.dev
-    slug: encoredev
   - company: Apify
     slug: apify
   - company: Sourcegraph
     slug: sourcegraph
-  - company: Hashnode
-    slug: hashnode
   - company: Supabase
     slug: supabase
   - company: GitLab
@@ -34,18 +30,42 @@ greenhouse:
     slug: neondatabase
   - company: Resend
     slug: resend
-  - company: Turso
-    slug: turso
-  - company: Prisma
-    slug: prismaio
+  - company: Tinybird
+    slug: tinybird
   - company: Oxide Computer
     slug: oxidecomputer
   - company: Trigger.dev
     slug: triggerdev
-  - company: Grafbase
-    slug: grafbase
-  - company: Tinybird
-    slug: tinybird
+  - company: Automattic
+    slug: automattic
+  - company: Zapier
+    slug: zapier
+  - company: Canonical
+    slug: canonical
+  - company: Elastic
+    slug: elastic
+  - company: Cloudflare
+    slug: cloudflare
+  - company: Stripe
+    slug: stripe
+  - company: Datadog
+    slug: datadog
+  - company: Vercel
+    slug: vercel
+  - company: PlanetScale
+    slug: planetscale
+  - company: Turso
+    slug: turso
+  - company: Hasura
+    slug: hasura
+  - company: Dagger
+    slug: dagger
+  - company: Depot
+    slug: depot
+  - company: Railway
+    slug: railway
+  - company: SigNoz
+    slug: signoz
 
   # Indian tech companies (Bangalore/Delhi) - Greenhouse users
   - company: Razorpay
@@ -58,43 +78,44 @@ greenhouse:
     slug: postman
   - company: slice
     slug: sliceit
-  - company: Setu
-    slug: setu
   - company: Juspay
     slug: juspay
   - company: Porter
     slug: porter
-  - company: Ula
-    slug: ula
   - company: Darwinbox
     slug: darwinbox
   - company: Groww
     slug: groww
   - company: Zepto
     slug: zepto
-  - company: Dukaan
-    slug: dukaan
   - company: Chargebee
     slug: chargebee
   - company: Freshworks
     slug: freshworks
   - company: Unacademy
     slug: unacademy
-  - company: Vedantu
-    slug: vedantu
   - company: Lenskart
     slug: lenskart
-  # Global remote — confirmed EOR/contractor-friendly via market research
-  - company: Automattic
-    slug: automattic
-  - company: Zapier
-    slug: zapier
-  - company: Canonical
-    slug: canonical
-  - company: Elastic
-    slug: elastic
-  - company: SigNoz
-    slug: signoz
+  - company: Jupiter
+    slug: jupiter-money
+  - company: Fi Money
+    slug: epifi
+  - company: Leadsquared
+    slug: leadsquared
+  - company: Druva
+    slug: druva
+  - company: Icertis
+    slug: icertis
+  - company: Mindtickle
+    slug: mindtickle
+  - company: Appsflyer
+    slug: appsflyer
+  - company: Gupshup
+    slug: gupshup
+  - company: Cashfree
+    slug: cashfree
+  - company: Setu
+    slug: setu
 
 lever:
   # Global remote
@@ -110,6 +131,24 @@ lever:
     slug: render
   - company: Mintlify
     slug: mintlify
+  - company: Loops
+    slug: loops
+  - company: WorkOS
+    slug: workos
+  - company: Stytch
+    slug: stytch
+  - company: Doppler
+    slug: doppler
+  - company: Courier
+    slug: trycourier
+  - company: Retool
+    slug: retool
+  - company: Airplane
+    slug: airplane
+  - company: Brex
+    slug: brex
+  - company: Ramp
+    slug: ramp
 
   # Indian companies using Lever
   - company: Meesho
@@ -122,12 +161,8 @@ lever:
     slug: phonepe
   - company: Zomato
     slug: zomato
-  - company: Dunzo
-    slug: dunzo
   - company: Zetwerk
     slug: zetwerk
-  - company: Rupeek
-    slug: rupeek
   - company: Vymo
     slug: vymo
   - company: Innovaccer
@@ -138,15 +173,25 @@ lever:
     slug: clevertap
   - company: MoEngage
     slug: moengage
+  - company: Niyo
+    slug: niyo
+  - company: OFBusiness
+    slug: ofbusiness
+  - company: Khatabook
+    slug: khatabook
+  - company: OkCredit
+    slug: okcredit
+  - company: Healthplix
+    slug: healthplix
+  - company: Eka Care
+    slug: ekacare
 
 ashby:
-  # Global remote
+  # Global remote — AI/infra companies
   - company: Oxide Computer
     slug: oxide
   - company: Liveblocks
     slug: liveblocks
-  - company: Linear
-    slug: linear
   - company: Highlight.io
     slug: highlight
   - company: Lago
@@ -161,10 +206,40 @@ ashby:
     slug: elevenlabs
   - company: Pipecat Cloud (Daily.co)
     slug: daily
+  - company: Browserbase
+    slug: browserbase
+  - company: Stagehand
+    slug: stagehand
+  - company: Windmill
+    slug: windmill
+  - company: Buildkite
+    slug: buildkite
+  - company: Drifting in Space
+    slug: driftinginspace
+  - company: Zed Industries
+    slug: zed
+  - company: Warp
+    slug: warp
+  - company: Modal
+    slug: modal
+  - company: Baseten
+    slug: baseten
+  - company: Together AI
+    slug: togetherai
+  - company: Anyscale
+    slug: anyscale
+  - company: LangChain
+    slug: langchain
+  - company: Weights & Biases
+    slug: wandb
+  - company: Cohere
+    slug: cohere
+  - company: Mistral AI
+    slug: mistral
+  - company: Groq
+    slug: groq
 
-  # Indian tech
-  - company: Setu
-    slug: setu
+  # Indian tech — Ashby users
   - company: Hyperface
     slug: hyperface
   - company: Sarvam AI
@@ -173,4 +248,5 @@ ashby:
     slug: lyzr
   - company: Bolna AI
     slug: bolna
-
+  - company: Sprinklr
+    slug: sprinklr
