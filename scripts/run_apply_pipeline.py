@@ -28,8 +28,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select
 
+from sqlalchemy.orm import selectinload
 from dragnet.db.connection import SessionLocal, init_db
-from dragnet.db.models import Application, ApplicationState, Posting, StateTransition
+from dragnet.db.models import Application, ApplicationState, Posting, Company, StateTransition
 from dragnet.executor.queue import run_executor_pass, run_tailoring_pass, _record_transition
 from datetime import datetime, timezone
 UTC = timezone.utc
@@ -38,7 +39,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
-async def approval_gate(db, limit: int) -> tuple[int, int]:
+async def approval_gate(db, limit: int, auto_approve: bool = False) -> tuple[int, int]:
     """
     Present tailored applications for human review.
     Returns (approved_count, rejected_count).
@@ -46,8 +47,9 @@ async def approval_gate(db, limit: int) -> tuple[int, int]:
     result = await db.execute(
         select(Application, Posting)
         .join(Posting, Application.posting_id == Posting.id)
-        .join(Posting.company)
+        .join(Company, Posting.company_id == Company.id)
         .where(Application.state == ApplicationState.tailored)
+        .options(selectinload(Application.posting).selectinload(Posting.company))
         .limit(limit)
     )
     rows = result.all()
@@ -57,15 +59,20 @@ async def approval_gate(db, limit: int) -> tuple[int, int]:
         return 0, 0
 
     approved = rejected = 0
-    approve_all = False
+    approve_all = auto_approve
 
     print(f"\n{'='*60}")
-    print(f"HUMAN REVIEW GATE — {len(rows)} application(s) to review")
-    print("Keys: y=approve  n=reject  a=approve all  q=quit")
+    if auto_approve:
+        print(f"HUMAN REVIEW GATE — auto-approving {len(rows)} (dry-run mode)")
+    else:
+        print(f"HUMAN REVIEW GATE — {len(rows)} application(s) to review")
+        print("Keys: y=approve  n=reject  a=approve all  q=quit")
     print('='*60)
 
     for app, posting in rows:
         if approve_all:
+            app.state = ApplicationState.human_review
+            await _record_transition(db, app, ApplicationState.human_review, "human_gate")
             approved += 1
             continue
 
@@ -84,14 +91,17 @@ async def approval_gate(db, limit: int) -> tuple[int, int]:
             print("  Invalid input — enter y, n, a, or q")
 
         if choice == "y":
+            app.state = ApplicationState.human_review
+            await _record_transition(db, app, ApplicationState.human_review, "human_gate")
             approved += 1
         elif choice == "n":
             app.state = ApplicationState.human_rejected
             await _record_transition(db, app, ApplicationState.human_rejected, "human_gate")
-            await db.commit()
             rejected += 1
         elif choice == "a":
             approve_all = True
+            app.state = ApplicationState.human_review
+            await _record_transition(db, app, ApplicationState.human_review, "human_gate")
             approved += 1
         elif choice == "q":
             print("\nPipeline stopped by user.")
@@ -123,10 +133,10 @@ async def main():
         tailored = await run_tailoring_pass(db, limit=args.limit)
     print(f"      Tailored: {tailored}")
 
-    # Step 2: Human approval gate
+    # Step 2: Human approval gate (auto-approve in dry-run)
     print("\n[2/3] Human approval gate...")
     async with SessionLocal() as db:
-        approved, rejected = await approval_gate(db, limit=args.limit)
+        approved, rejected = await approval_gate(db, limit=args.limit, auto_approve=args.dry_run)
     print(f"      Approved: {approved}  Rejected: {rejected}")
 
     if approved == 0 and not args.dry_run:

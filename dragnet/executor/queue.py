@@ -9,10 +9,12 @@ import logging
 import random
 from datetime import datetime, timezone
 
-UTC = timezone.utc
+def utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 from pathlib import Path
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dragnet.config import settings
@@ -59,6 +61,7 @@ async def run_tailoring_pass(db: AsyncSession, limit: int = 50) -> int:
         select(Posting, Application)
         .join(Application, Posting.id == Application.posting_id)
         .where(Application.state == ApplicationState.eligible)
+        .options(selectinload(Application.posting).selectinload(Posting.company))
         .limit(limit)
     )
 
@@ -116,6 +119,7 @@ async def run_executor_pass(db: AsyncSession, dry_run: bool = False) -> dict:
                 ApplicationState.human_review,
             ])
         )
+        .options(selectinload(Application.posting).selectinload(Posting.company))
         .order_by(Posting.rank_score.desc())
         .limit(20)
     )
@@ -186,7 +190,7 @@ async def run_executor_pass(db: AsyncSession, dry_run: bool = False) -> dict:
 
         if submit_result["success"]:
             app.state = ApplicationState.submitted
-            app.submitted_at = datetime.now(UTC)
+            app.submitted_at = utcnow()
             if submit_result.get("screenshot"):
                 app.confirmation_screenshot = str(submit_result["screenshot"])
             browser_session.mark_applied_to_company(company_slug)
@@ -258,5 +262,5 @@ async def _record_transition(db: AsyncSession, app: Application, to_state: Appli
         to_state=to_state,
         trigger=trigger,
     )
-    app.last_state_at = datetime.now(UTC)
+    app.last_state_at = utcnow()
     db.add(transition)
