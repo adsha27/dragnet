@@ -23,10 +23,31 @@ TARGET_ROLE_KEYWORDS = [
     "full-stack engineer", "full stack developer",
 ]
 
-# Hard reject: managerial/leadership requirements
+# Hard reject by title — non-tech roles that sometimes contain tech keywords
 REJECT_ROLE_KEYWORDS = [
+    # Leadership
     "vp of engineering", "head of engineering", "director of engineering",
-    "engineering manager", "vp engineering",
+    "engineering manager", "vp engineering", "chief of staff",
+    # Sales & GTM
+    "account executive", "account manager", "sales engineer", "solutions engineer",
+    "sales development", "business development", "revenue operations",
+    "customer success", "customer support", "technical support", "support engineer",
+    "solutions architect", "field engineer", "pre-sales",
+    # Marketing
+    "marketing", "content strategist", "growth engineer", "seo",
+    # Design & Product
+    "product manager", "product designer", "ux designer", "ui designer",
+    "visual designer", "brand designer", "creative director",
+    # Data & Analytics (not engineering)
+    "data analyst", "data scientist", "analytics engineer", "business analyst",
+    "business intelligence", "bi engineer",
+    # Ops & Finance & Legal
+    "recruiter", "talent acquisition", "people operations", "hr ", "human resources",
+    "finance", "accounting", "legal counsel", "paralegal", "compliance",
+    "operations manager", "program manager", "project manager",
+    # Hardware / non-software
+    "hardware engineer", "electrical engineer", "mechanical engineer",
+    "firmware engineer", "fpga",
 ]
 
 # Salary floors
