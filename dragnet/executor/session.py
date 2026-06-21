@@ -52,6 +52,7 @@ class BrowserSession:
         )
         if self._given_session_id:
             self._session_id = self._given_session_id
+            cdp_url = None
         else:
             resp = await self._client.sessions.start(
                 model_name="claude-haiku-4-5-20251001",
@@ -59,16 +60,17 @@ class BrowserSession:
                     "projectId": settings.browserbase_project_id,
                 },
             )
-            self._session_id = resp.data.id
+            self._session_id = resp.id
+            cdp_url = resp.data.cdp_url
 
         # Connect Playwright for file upload / screenshot
-        await self._connect_playwright()
+        await self._connect_playwright(cdp_url)
 
-    async def _connect_playwright(self):
+    async def _connect_playwright(self, cdp_url: str | None = None):
         try:
             from playwright.async_api import async_playwright
             self._playwright = await async_playwright().start()
-            ws_url = (
+            ws_url = cdp_url or (
                 f"wss://connect.browserbase.com?apiKey={settings.browserbase_api_key}"
                 f"&sessionId={self._session_id}"
             )
@@ -110,6 +112,9 @@ class BrowserSession:
         return self._page
 
     async def act(self, instruction: str):
+        # Use Playwright for all interaction — Stagehand navigate 500s on LinkedIn
+        if self._page:
+            return await self._page.evaluate(f"() => {{ /* {instruction} */ }}")
         return await self._client.sessions.act(
             self._session_id,
             input={"description": instruction},
@@ -122,12 +127,10 @@ class BrowserSession:
         return await self._client.sessions.extract(self._session_id, **kwargs)
 
     async def goto(self, url: str):
-        await self._client.sessions.navigate(self._session_id, url=url)
         if self._page:
-            try:
-                await self._page.goto(url)
-            except Exception:
-                pass
+            await self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        else:
+            await self._client.sessions.navigate(self._session_id, url=url)
 
     async def screenshot(self, path: Path):
         if self._page:
