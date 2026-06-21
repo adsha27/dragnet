@@ -151,7 +151,7 @@ async def import_jobs(jobs_path: Path) -> tuple[int, int, int]:
                     company_id=company.id,
                     external_id=str(job.get("external_id") or dedup_hash[:20]),
                     title=_normalize_unicode(job.get("title") or "Unknown"),
-                    location=_normalize_unicode(job.get("location") or ""),
+                    location=_normalize_unicode(job.get("location") or "")[:500],
                     apply_url=apply_url,
                     raw_json=raw_json,
                     content_text=_normalize_unicode(job.get("content_text") or ""),

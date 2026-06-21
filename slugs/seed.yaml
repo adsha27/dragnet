@@ -1,29 +1,50 @@
 # Seed slugs for ATS crawlers.
 # Format: company | ats_type | slug
 # Sources: YC companies, remote-first AI/backend cos, Indian tech cos (Bangalore/Delhi)
+# All slugs verified against live APIs before adding.
 
 greenhouse:
-  # Global-remote — verified working slugs
-  - company: Temporal
-    slug: temporaltechnologies
+  # AI/ML — verified
+  - company: Anthropic
+    slug: anthropic
+  - company: Scale AI
+    slug: scaleai
+  - company: Databricks
+    slug: databricks
+  - company: Coreweave
+    slug: coreweave
+
+  # Global infra/dev tools — verified
   - company: GitLab
     slug: gitlab
-  - company: Canonical
-    slug: canonical
-  - company: Elastic
-    slug: elastic
   - company: Cloudflare
     slug: cloudflare
   - company: Stripe
     slug: stripe
   - company: Datadog
     slug: datadog
+  - company: Elastic
+    slug: elastic
+  - company: Canonical
+    slug: canonical
   - company: Vercel
     slug: vercel
+  - company: Temporal
+    slug: temporaltechnologies
+  - company: MongoDB
+    slug: mongodb
+  - company: Figma
+    slug: figma
+  - company: Intercom
+    slug: intercom
+  - company: Airtable
+    slug: airtable
+  - company: LaunchDarkly
+    slug: launchdarkly
   - company: PlanetScale
     slug: planetscale
 
-  # Indian tech — verified working slugs
+  # Indian tech — verified
   - company: Postman
     slug: postman
   - company: Groww
@@ -34,76 +55,64 @@ greenhouse:
     slug: appsflyer
 
 lever:
-  # Global remote
+  # Global remote — verified working
   - company: Remote.com
     slug: remote
-  - company: Knock
-    slug: knock
-  - company: Lago
-    slug: lago
-  - company: Inngest
-    slug: inngest
-  - company: Render
-    slug: render
-  - company: Mintlify
-    slug: mintlify
-  - company: Loops
-    slug: loops
-  - company: WorkOS
-    slug: workos
-  - company: Stytch
-    slug: stytch
-  - company: Doppler
-    slug: doppler
-  - company: Courier
-    slug: trycourier
   - company: Retool
     slug: retool
-  - company: Airplane
-    slug: airplane
   - company: Brex
     slug: brex
   - company: Ramp
     slug: ramp
+  - company: Loops
+    slug: loops
+  - company: WorkOS
+    slug: workos
+  - company: Doppler
+    slug: doppler
 
-  # Indian companies using Lever
+  # Indian companies — verified working
   - company: Meesho
     slug: meesho
-  - company: Swiggy
-    slug: swiggy
-  - company: Urban Company
-    slug: urbancompany
-  - company: PhonePe
-    slug: phonepe
-  - company: Zomato
-    slug: zomato
-  - company: Zetwerk
-    slug: zetwerk
-  - company: Vymo
-    slug: vymo
-  - company: Innovaccer
-    slug: innovaccer
-  - company: Exotel
-    slug: exotel
-  - company: Clevertap
-    slug: clevertap
-  - company: MoEngage
-    slug: moengage
-  - company: Niyo
-    slug: niyo
-  - company: OFBusiness
-    slug: ofbusiness
-  - company: Khatabook
-    slug: khatabook
-  - company: OkCredit
-    slug: okcredit
-  - company: Healthplix
-    slug: healthplix
-  - company: Eka Care
-    slug: ekacare
 
 ashby:
-  # Global remote — AI/infra companies
+  # AI/ML — verified or valid boards
+  - company: Perplexity
+    slug: perplexity
+  - company: Harvey
+    slug: harvey
+  - company: Character.ai
+    slug: character
+  - company: Replit
+    slug: replit
+  - company: Groq
+    slug: groq
+  - company: Mistral AI
+    slug: mistral
+  - company: Cohere
+    slug: cohere
+  - company: Together AI
+    slug: togetherai
+  - company: Anyscale
+    slug: anyscale
+  - company: Baseten
+    slug: baseten
+  - company: Modal
+    slug: modal
+  - company: Weights & Biases
+    slug: wandb
+  - company: LangChain
+    slug: langchain
+  - company: ElevenLabs
+    slug: elevenlabs
+  - company: Warp
+    slug: warp
+  - company: Zed Industries
+    slug: zed
+  - company: Composio
+    slug: composio
+
+  # Infra/dev tools — verified or valid boards
   - company: Posthog
     slug: posthog
   - company: Linear
@@ -114,61 +123,37 @@ ashby:
     slug: supabase
   - company: Zapier
     slug: zapier
-  - company: Oxide Computer
-    slug: oxide
-  - company: Liveblocks
-    slug: liveblocks
-  - company: Highlight.io
-    slug: highlight
-  - company: Lago
-    slug: lago
-  - company: Composio
-    slug: composio
-  - company: Firecrawl (Mendable)
-    slug: mendable
-  - company: Portkey AI
-    slug: portkey
-  - company: ElevenLabs
-    slug: elevenlabs
-  - company: Pipecat Cloud (Daily.co)
-    slug: daily
-  - company: Browserbase
-    slug: browserbase
-  - company: Windmill
-    slug: windmill
-  - company: Zed Industries
-    slug: zed
-  - company: Warp
-    slug: warp
-  - company: Modal
-    slug: modal
-  - company: Baseten
-    slug: baseten
-  - company: Together AI
-    slug: togetherai
-  - company: Anyscale
-    slug: anyscale
-  - company: LangChain
-    slug: langchain
-  - company: Weights & Biases
-    slug: wandb
-  - company: Cohere
-    slug: cohere
-  - company: Mistral AI
-    slug: mistral
-  - company: Groq
-    slug: groq
   - company: Sourcegraph
     slug: sourcegraph
+  - company: Browserbase
+    slug: browserbase
+  - company: Depot
+    slug: depot
+  - company: Railway
+    slug: railway
+  - company: SigNoz
+    slug: signoz
+  - company: Windmill
+    slug: windmill
+  - company: Highlight.io
+    slug: highlight
+  - company: Liveblocks
+    slug: liveblocks
+  - company: Portkey AI
+    slug: portkey
+  - company: Firecrawl
+    slug: mendable
+  - company: Oxide Computer
+    slug: oxide
 
   # Indian tech — Ashby users
-  - company: Hyperface
-    slug: hyperface
   - company: Sarvam AI
     slug: sarvam-ai
+  - company: Hyperface
+    slug: hyperface
+  - company: Sprinklr
+    slug: sprinklr
   - company: Lyzr AI
     slug: lyzr
   - company: Bolna AI
     slug: bolna
-  - company: Sprinklr
-    slug: sprinklr
