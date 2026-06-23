@@ -49,14 +49,28 @@ async def apply(
         if not _LINKEDIN_LOGGED_IN:
             await _login(session)
 
-        # Navigate to job posting
-        await page.goto(apply_url, wait_until="domcontentloaded", timeout=30000)
+        # Navigate to job posting — LinkedIn may interrupt navigation (bot detection redirect)
+        try:
+            await page.goto(apply_url, wait_until="domcontentloaded", timeout=30000)
+        except Exception as nav_err:
+            if "interrupted" in str(nav_err).lower():
+                # LinkedIn redirected mid-navigation — wait and read wherever we landed
+                await page.wait_for_timeout(2000)
+            else:
+                raise
 
         # Wait for main content — not networkidle (LinkedIn never settles)
         try:
             await page.wait_for_selector("main, #main, .jobs-details", timeout=10000)
         except Exception:
             pass
+
+        # Check where we actually landed
+        current_url = page.url
+        if current_url.rstrip("/") in ("https://www.linkedin.com", "https://www.linkedin.com/feed"):
+            logger.error(f"LinkedIn redirected to homepage from {apply_url} — bot detection")
+            result["failure_type"] = "login_wall"
+            return result
 
         page_content = await page.content()
 

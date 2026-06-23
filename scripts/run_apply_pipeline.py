@@ -118,6 +118,8 @@ async def main():
                         help="Fill forms but do not click submit")
     parser.add_argument("--limit", type=int, default=20,
                         help="Max applications to process per run (default: 20)")
+    parser.add_argument("--ats-only", action="store_true",
+                        help="Skip LinkedIn jobs, only process Greenhouse/Lever/Ashby")
     args = parser.parse_args()
 
     await init_db()
@@ -128,9 +130,10 @@ async def main():
     print('='*60)
 
     # Step 1: Tailoring pass
+    ats_only = getattr(args, 'ats_only', False)
     print("\n[1/3] Tailoring pass — assigning category resumes...")
     async with SessionLocal() as db:
-        tailored = await run_tailoring_pass(db, limit=args.limit)
+        tailored = await run_tailoring_pass(db, limit=args.limit, ats_only=ats_only)
     print(f"      Tailored: {tailored}")
 
     # Step 2: Human approval gate (auto-approve in dry-run)

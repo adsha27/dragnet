@@ -77,11 +77,17 @@ class BrowserSession:
             self._browser = await self._playwright.chromium.connect_over_cdp(ws_url)
             contexts = self._browser.contexts
             if contexts:
-                pages = contexts[0].pages
-                self._page = pages[0] if pages else await contexts[0].new_page()
+                ctx = contexts[0]
+                pages = ctx.pages
+                self._page = pages[0] if pages else await ctx.new_page()
             else:
                 ctx = await self._browser.new_context()
                 self._page = await ctx.new_page()
+
+            # Remove webdriver fingerprint so LinkedIn/Google don't detect automation
+            await self._page.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+            )
         except Exception as e:
             logger.warning(f"Playwright CDP connect failed: {e} — screenshots/uploads unavailable")
 

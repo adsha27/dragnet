@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dragnet.config import settings
-from dragnet.db.models import Application, ApplicationState, FailureType, Posting, StateTransition
+from dragnet.db.models import Application, ApplicationState, ATSType, Company, FailureType, Posting, StateTransition
 from dragnet.eligibility.liveness import check_liveness
 from dragnet.eligibility.ranker import classify_and_rank_pending
 from dragnet.executor import session as browser_session
@@ -51,19 +51,25 @@ def needs_human_approval(submitted_count: int) -> bool:
 _CATEGORY_RESUMES_DIR = Path("output/category_resumes")
 
 
-async def run_tailoring_pass(db: AsyncSession, limit: int = 50) -> int:
+async def run_tailoring_pass(db: AsyncSession, limit: int = 50, ats_only: bool = False) -> int:
     """
     Assign pre-reviewed category resumes to eligible postings.
     No LLM calls — just resolves output/category_resumes/<category>.pdf.
     Returns count of postings advanced to tailored state.
     """
-    result = await db.execute(
+    q = (
         select(Posting, Application)
         .join(Application, Posting.id == Application.posting_id)
         .where(Application.state == ApplicationState.eligible)
         .options(selectinload(Application.posting).selectinload(Posting.company))
         .limit(limit)
     )
+    if ats_only:
+        q = (
+            q.join(Company, Posting.company_id == Company.id)
+            .where(Company.ats_type.in_([ATSType.greenhouse, ATSType.lever, ATSType.ashby]))
+        )
+    result = await db.execute(q)
 
     count = 0
     for posting, application in result.all():
