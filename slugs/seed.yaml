@@ -146,7 +146,7 @@ ashby:
   - company: Oxide Computer
     slug: oxide
 
-  # Indian tech — Ashby users
+  # Indian AI/backend
   - company: Sarvam AI
     slug: sarvam-ai
   - company: Hyperface
@@ -157,3 +157,14 @@ ashby:
     slug: lyzr
   - company: Bolna AI
     slug: bolna
+
+recruitee:
+  # Indian — confirmed working
+  - company: Clanx
+    slug: clanx
+
+  # HR/Payroll SaaS (European)
+  - company: Personio
+    slug: personio
+  - company: Hygraph
+    slug: hygraph

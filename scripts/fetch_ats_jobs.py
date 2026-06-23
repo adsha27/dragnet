@@ -19,7 +19,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dragnet.sourcing.ats import ashby, greenhouse, lever
+from dragnet.sourcing.ats import ashby, greenhouse, lever, recruitee
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -30,11 +30,16 @@ OUTPUT_FILE = Path("output/ats_jobs.json")
 
 async def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ats", choices=["greenhouse", "lever", "ashby", "all"], default="all")
+    parser.add_argument("--ats", choices=["greenhouse", "lever", "ashby", "recruitee", "all"], default="all")
     args = parser.parse_args()
 
     seed = yaml.safe_load(SEED_FILE.read_text())
-    fetchers = {"greenhouse": greenhouse.fetch_postings, "lever": lever.fetch_postings, "ashby": ashby.fetch_postings}
+    fetchers = {
+        "greenhouse": greenhouse.fetch_postings,
+        "lever": lever.fetch_postings,
+        "ashby": ashby.fetch_postings,
+        "recruitee": recruitee.fetch_postings,
+    }
 
     all_jobs = []
     counts = {}
