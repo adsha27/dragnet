@@ -133,6 +133,63 @@ async def answer_custom_question(question: str, posting: dict) -> str:
     if any(p in q for p in ["preferred name", "preferred first name", "name to use", "name you'd prefer", "name throughout"]):
         return "Aditya"
 
+    # Platform-specific username fields — blank if we don't have an account there
+    if any(p in q for p in ["username", "profile url", "handle"]) and \
+       any(p in q for p in ["gitlab", "bitbucket", "stackoverflow", "kaggle", "leetcode", "hackerrank"]):
+        return ""
+
+    # Location / working location text field
+    if any(p in q for p in ["working location", "specific working location", "where are you based", "where do you work from"]):
+        return "New Delhi, India"
+
+    # Demographic / EEO questions — handled by _handle_required_dropdowns with "Prefer not to say"
+    if any(p in q for p in ["race", "ethnicity", "gender", "disability", "veteran status"]):
+        return ""
+
+    # Number of previous companies — return "1" (Right Walk Solutions is the only employer)
+    if any(p in q for p in ["how many companies", "number of employers", "number of previous employers"]):
+        return "1"
+
+    # Canonical-specific acknowledge/agree dropdowns
+    if any(p in q for p in ["agree to use only my own", "agree to canonical", "use only my own work"]):
+        return "Yes"
+    if any(p in q for p in ["confirm that you have read", "read and agree to canonical"]):
+        return "Acknowledge/Confirm"
+
+    # Academic performance questions (Canonical) — return a concrete option string
+    if any(p in q for p in ["mathematics at high school", "perform in mathematics"]):
+        return "Top 20% at school"
+    if any(p in q for p in ["native language at high school", "perform in your native language", "language at high school"]):
+        return "Top 50% at school"
+
+    # Country/location — one word answer, never prose
+    if any(p in q for p in ["which country", "country of residence", "country do you work",
+                             "where do you currently work", "country are you working"]):
+        return "India"
+
+    # Travel commitment — yes/no, never prose
+    if any(p in q for p in ["willing and able to commit", "commit to this", "willing to travel",
+                             "travel requirement", "meet in person"]):
+        return "Yes"
+
+    # Nationality (text field version)
+    if "nationality" in q and "indicate" in q:
+        return "Indian"
+
+    # Binary yes/no questions — return one word so fill() doesn't corrupt a dropdown
+    if any(p in q for p in ["require sponsorship", "visa sponsorship", "sponsor.*visa"]):
+        return "Yes"
+    if any(p in q for p in ["employment agreement", "non-compete", "post-employment restriction",
+                             "previously worked at", "consulted for", "former employee",
+                             "legally authorized to work in the united states",
+                             "authorized to work in the us"]):
+        return "No"
+    if "experience in go" in q and "experience in go" not in ["experience in google"]:
+        return "No"
+    if any(p in q for p in ["experience in kubernetes", "experience with kubernetes",
+                             "experience in k8s", "experience with k8s"]):
+        return "No"
+
     # GitHub — return profile URL directly, no LLM needed
     if "github" in q:
         return "https://github.com/adsha27"
