@@ -97,6 +97,13 @@ experience:
         verified: true
         resume_use: "Use 'live pilot' framing. Cite 156 conversations / 72 user-active if asked."
 
+      - id: rw_maharashtra_adoption
+        claim: "WhatsApp AI assistant officially adopted by the Maharashtra government as MahaChatur; 263,000+ apprentices interact with it as part of their mandatory NAPS registration journey"
+        detail: "MahaChatur launched April 28-29 2026. First such state government AI assistant in India. Maharashtra had 2,63,239 NAPS enrollees in 2023-24, highest of any state. Built by Right Walk Foundation in partnership with Skill, Employment, Entrepreneurship and Innovation Department. Reduces apprenticeship registration from 2-3 days to 15 minutes. The system is part of the required registration workflow — not optional — so the 263k is an active-use figure, not just reach."
+        numbers_used: [263000]
+        verified: true
+        resume_use: "Frame as: official government adoption + mandatory workflow. '263,000+ apprentices use it as part of their registration journey' — not 'addressable user base'. Do not cite CM name in resume bullets."
+
       - id: rw_eval_pack
         claim: "Built eval suite covering 5 languages and 8 scenario files to support model bakeoffs"
         detail: "Part of the model bakeoff workflow."

@@ -1,9 +1,7 @@
 \documentclass[10pt]{extarticle}
 \usepackage[margin=0.3in]{geometry}
-\usepackage{romannum}
 \usepackage[most]{tcolorbox}
 \usepackage{enumitem}
-\usepackage{multicol}
 \usepackage{hyperref}
 \setlist[itemize]{noitemsep, topsep=0pt}
 \addtolength{\parskip}{-1.5mm}
@@ -11,17 +9,11 @@
 \tcbset{
     frame code={},
     center title,
-    left=0pt,
-    right=0pt,
-    top=0pt,
-    bottom=0pt,
-    colback=gray!50,
-    colframe=white,
+    left=0pt, right=0pt, top=0pt, bottom=0pt,
+    colback=gray!50, colframe=white,
     width=\dimexpr\textwidth\relax,
     enlarge left by=0mm,
-    boxsep=3pt,
-    arc=0pt,
-    outer arc=0pt,
+    boxsep=3pt, arc=0pt, outer arc=0pt,
 }
 
 \begin{document}
@@ -36,82 +28,45 @@
 \textbf{Github:} \href{https://github.com/adsha27}{adsha27}
 \hfill
 \textbf{Phone:} +91-9829368698
+\hfill
+\textbf{LinkedIn:} \href{https://linkedin.com/in/adsha}{adsha}
 
 \vspace{-4pt}
 \noindent\rule{\linewidth}{1pt}
-
 \vspace{-2pt}
-
-{\large\textbf{\begin{tcolorbox}\textsc{Education}\end{tcolorbox}}}
-
-\begin{center}
-\begin{tabular}{|p{1.8cm}|p{6.5cm}|p{7.5cm}|p{1.5cm}|}
-\hline
-\centering\textbf{Year} &
-\centering\textbf{Degree/Certificate} &
-\centering\textbf{Institute} &
-\centering\textbf{CGPA/\%}
-\tabularnewline
-\hline
-
-\centering 2025 &
-\centering B.Tech in Computer Science &
-\centering Jaipur Engineering College and Research Center &
-\centering 7.1 / 10
-\tabularnewline
-
-\hline
-
-\centering 2020 &
-\centering 12th CBSE &
-\centering Sarvodaya Senior Secondary School &
-\centering 63\%
-\tabularnewline
-
-\hline
-
-\centering 2018 &
-\centering 10th CBSE &
-\centering Sarvodaya Senior Secondary School &
-\centering 89\%
-\tabularnewline
-
-\hline
-\end{tabular}
-\end{center}
 
 {\large\textbf{\begin{tcolorbox}\textsc{Experience}\end{tcolorbox}}}
 
 \begin{itemize}[leftmargin=0pt, label={}, itemsep=1pt]
 
-\item \textbf{Right Walk Foundation | Remote}
+\item \textbf{Right Walk Foundation | Delhi}
 \hfill
-\textbf{\textit{Member of Technical Staff (Backend) | Feb 2026 -- Present}}
+\textbf{\textit{Member of Technical Staff | Feb 2026 -- Present}}
 
 \begin{itemize}
-    \item Built production Go/Python backend services for MahaChatur and RTE bots — AI systems handling citizen queries at scale across WhatsApp; integrated FastMCP tool servers, pgvector RAG pipelines, and Chatwoot APIs.
+    \item Built production backend for \textbf{MahaChatur}, officially adopted by the Maharashtra government as its WhatsApp AI assistant for NAPS apprenticeship registration; 263,000+ registered apprentices interact with the platform as a required step in their registration process.
 
-    \item Shipped NAPS portal automation: conversational onboarding flow for apprenticeship applications via prompt-driven assistant with vector retrieval over government policy documents.
+    \item Removed BAML orchestration and DB calls from the hot path, dropping a 1,000-user load test from 115s to 6s (95\% reduction); built the stress test harness covering concurrent load at 100 users per second.
 
-    \item Built evaluation tooling (mcp-bench) that surfaced a production MCP tool running at 0\% success rate silently; improved retrieval pipeline configuration to cut response latency.
+    \item Designed the MCP tool layer covering the full NAPS portal workflow: OTP login, eKYC, profile management, semantic search, and application submission; built RAG pipeline over 377 chunks from 13 government policy PDFs via pgvector.
+
+    \item Instrumented per-turn LLM token accounting (input, output, cached) for production cost visibility; built evaluation tooling that surfaced a live MCP tool running at 0\% success rate silently.
 \end{itemize}
 
-\item \textbf{Mercury Digital | Remote}
+\item \textbf{Mercury Digital | Jaipur}
 \hfill
 \textbf{\textit{Technical Project Manager | Aug 2025 -- Jan 2026}}
 
 \begin{itemize}
-    \item Owned technical delivery of AI chatbot, pricing engine, and Android/iOS products; defined architecture, coordinated 3 dev teams, and shipped 4 major feature releases across a 6-month engagement.
-
-    \item Aligned feature planning and delivery timelines across engineering, design, content, and marketing for a consumer-facing product serving multiple business verticals.
+    \item Led delivery of AI chatbot, pricing engine, and Android/iOS applications across a 10-person team; maintained 5 parallel delivery tracks and shipped 4 major feature releases across a 6-month engagement.
 \end{itemize}
 
-\item \textbf{Custard | Jaipur, Rajasthan}
+\item \textbf{MyHoC (formerly Custard) | Jaipur}
 \hfill
 \textbf{\textit{Co-Founder | Jun 2023 -- Nov 2023}}
 
 \begin{itemize}
-    \item Built backend from scratch (Python, MongoDB) for a community discovery platform; led product, hiring, and early user acquisition through direct outreach to communities across India.
+    \item Co-founded a community platform (now myhoc.in); built Python/MongoDB backend from scratch and reached 30+ communities across India through direct outreach.
 \end{itemize}
 
 \end{itemize}
@@ -120,70 +75,36 @@
 
 \begin{itemize}[leftmargin=0pt, label={}, itemsep=1pt]
 
-\item \textbf{go-ratelimit} \hfill \href{https://github.com/adsha27/go-ratelimit}{github.com/adsha27/go-ratelimit}
+\item \textbf{Birbal}
+\hfill
+\textit{Python, Telegram Bot API, Ollama}
+
 \begin{itemize}
-    \item Redis sliding-window rate limiter as a standalone Go library; atomic ZREMRANGEBYSCORE + ZCARD + ZADD pipeline per key; benchmarked at $\sim$207k req/s; ships as a drop-in \texttt{net/http} middleware with \texttt{X-RateLimit-*} headers.
+    \item Telegram AI agent with 4-mode LLM routing (fast, memory-backed, web-grounded, standard), 3 provider backends (Ollama, Claude, Gemini), GBrain durable memory with graph traversal, and 8 callable tools including web search, Playwright page fetch, and shell execution.
 \end{itemize}
 
-\item \textbf{sansad-data} \hfill \href{https://github.com/adsha27/sansad-data}{github.com/adsha27/sansad-data}
+\item \textbf{Dragnet}
+\hfill
+\textit{Python, PostgreSQL, Playwright}
+
 \begin{itemize}
-    \item Semantic search over India's parliamentary record — scraped 600+ MP/MLA affidavits from Election Commission data and Lok Sabha question archives; pgvector cosine similarity over sentence-transformer embeddings answers queries like ``which MPs from Rajasthan have criminal cases.''
-\end{itemize}
-
-\item \textbf{mcp-bench} \hfill \href{https://github.com/adsha27/mcp-bench}{github.com/adsha27/mcp-bench}
-\begin{itemize}
-    \item Async load testing framework for Model Context Protocol servers; born from a production tool silently failing at 0\% success rate; configurable concurrency, p50/p95/p99 per-tool latency + success rate, HTML reports; supports stdio and HTTP transports.
-\end{itemize}
-
-\item \textbf{govRAG} \hfill \href{https://github.com/adsha27/govRAG}{github.com/adsha27/govRAG}
-\begin{itemize}
-    \item RAG pipeline over NAPS/RTE government policy documents using HyDE (hypothetical document embeddings) and a Self-RAG critique loop; multi-provider LLM backend switchable via env var (Ollama / Groq / OpenAI-compatible); deployed on Railway via Docker.
-\end{itemize}
-
-\item \textbf{ai-tryon} \hfill \href{https://github.com/adsha27/ai-tryon}{github.com/adsha27/ai-tryon}
-\begin{itemize}
-    \item Virtual try-on inference pipeline wrapping CatVTON (ICLR 2025, 899M params); FastAPI REST endpoint + Gradio demo; MPS-aware device selection (Apple Silicon / CUDA / CPU) with float16 fallback.
-\end{itemize}
-
-\item \textbf{interior-editor} \hfill \href{https://github.com/adsha27/interior-editor}{github.com/adsha27/interior-editor}
-\begin{itemize}
-    \item 3D interior visualization tool with semantic NL editing — maps commands like ``add a marble dining table'' to typed scene mutations; delivered for a real-estate builder client; INR cost estimation, furniture catalog, Three.js viewport + 2D plan canvas.
-\end{itemize}
-
-\item \textbf{memento} \hfill \href{https://github.com/adsha27/memento}{github.com/adsha27/memento}
-\begin{itemize}
-    \item Daily mortality probability engine: SSA 2021 actuarial tables $\times$ USGS earthquake data $\times$ WAQI real-time AQI $\times$ World Bank life expectancy; Resend email pipeline, PIL desktop wallpaper generator, Chrome extension (Manifest V3) that replaces new tab with your daily number and a hard quote.
+    \item Async job aggregation pipeline sourcing 3,000+ postings from Greenhouse, Lever, Ashby, LinkedIn, HN, Remotive, and Himalayas into a unified PostgreSQL datastore; LLM eligibility classifier with checkpoint/resume processing 1,000 job descriptions; automated ATS form submission with resume tailoring across 4 market segments.
 \end{itemize}
 
 \end{itemize}
 
-{\large\textbf{\begin{tcolorbox}\textsc{Skills \& Interests}\end{tcolorbox}}}
+{\large\textbf{\begin{tcolorbox}\textsc{Skills \& Leadership}\end{tcolorbox}}}
 
-\vspace{2mm}
-
-\textbf{Technical Skills:}
-
-\begin{itemize}[leftmargin=2em, itemsep=1pt]
-    \item Go, Python, TypeScript, FastAPI, PostgreSQL, pgvector, Redis, MongoDB, REST APIs, Docker
-    \item RAG pipelines, LLM orchestration, HyDE, Self-RAG, MCP protocol, diffusers, HuggingFace, sentence-transformers
-    \item AWS, Git, Linux, Three.js, Gradio
+\begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+    \item[$-$] \textbf{Languages:} Go, Python, SQL
+    \item[$-$] \textbf{Backend:} FastAPI, REST APIs, PostgreSQL, pgvector, Redis, Linux
+    \item[$-$] \textbf{AI Systems:} LLMs, RAG, MCP, Prompt Engineering, Vector Search, Ollama
+    \item[$-$] \textbf{Tools:} AWS, Git/GitHub, Docker, Playwright
+    \item[$-$] \textbf{Leadership:} Deputy Secretary General, JECRC MUN Society; chaired multiple Model United Nations conferences.
 \end{itemize}
 
-\vspace{2mm}
+{\large\textbf{\begin{tcolorbox}\textsc{Education}\end{tcolorbox}}}
 
-\textbf{Extracurricular Activities:}
-
-\begin{itemize}[leftmargin=2em, itemsep=1pt]
-    \item Deputy Secretary General, JECRC MUN Society; recognized for leadership and parliamentary proficiency.
-    \item Award-winning MUN participant; served as Chairman/Vice Chairman at external conferences.
-\end{itemize}
-
-\vspace{2mm}
-
-\textbf{Interests:}
-
-\begin{itemize}[leftmargin=2em, itemsep=1pt]
-    \item Finance, trekking, swimming, debating, reading (100+ books), geopolitics, cultural studies
-\end{itemize}
+\noindent \textbf{B.Tech, Computer Science} \hspace{1em} Jaipur Engineering College and Research Center \hfill 2025 $|$ 7.1/10
 
 \end{document}

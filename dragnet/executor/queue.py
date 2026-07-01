@@ -237,28 +237,8 @@ async def _dispatch_ats(session, ats_type: str, url: str, resume_path, answers, 
 
 
 async def _generic_apply(session, apply_url, resume_path, answers, posting, dry_run=False) -> dict:
-    """Fallback generic apply using Stagehand agent.execute."""
-    result = {"success": False, "screenshot": None, "failure_type": None}
-    try:
-        await session.goto(apply_url)
-        await session.page.wait_for_load_state("networkidle", timeout=15000)
-
-        await session.act(f"Fill the job application form with: Name={settings.applicant_name}, Email={settings.applicant_email}, Phone={settings.applicant_phone}, Location=Delhi India")
-        await session.upload_file('input[type="file"]', resume_path)
-
-        screenshot_path = settings.screenshots_dir / f"{posting.get('id', 'unknown')}_generic_preflight.png"
-        await session.screenshot(screenshot_path)
-        result["screenshot"] = screenshot_path
-
-        if not dry_run:
-            await session.act("Submit the application")
-            await session.page.wait_for_load_state("networkidle", timeout=10000)
-
-        result["success"] = True
-    except Exception as e:
-        result["failure_type"] = "submit_failed"
-        result["error"] = str(e)
-    return result
+    # ponytail: unsupported ATS types go to human review — no blind form filling
+    return {"success": False, "screenshot": None, "failure_type": "unsupported_ats"}
 
 
 async def _record_transition(db: AsyncSession, app: Application, to_state: ApplicationState, trigger: str):

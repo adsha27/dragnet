@@ -1,7 +1,5 @@
 """
-M4 — Browserbase session management via Stagehand v3.x API.
-Acts/navigates through sessions resource: sessions.start() -> id -> act/navigate/end.
-File upload and screenshots use Playwright via Browserbase CDP.
+Browser session management using local Playwright (no Browserbase required).
 Concurrency: 3 sessions max. Per-domain rate limit: 1 app/company/day.
 """
 
@@ -19,12 +17,9 @@ _domain_last_applied: dict[str, datetime] = {}
 
 
 class BrowserSession:
-    """Context manager wrapping a Stagehand v3.x browser session."""
+    """Context manager wrapping a local Playwright browser session."""
 
     def __init__(self, session_id: str | None = None):
-        self._given_session_id = session_id
-        self._client = None
-        self._session_id: str | None = None
         self._playwright = None
         self._browser = None
         self._page = None
@@ -45,114 +40,50 @@ class BrowserSession:
             _semaphore.release()
 
     async def _start(self):
-        from stagehand import AsyncStagehand
-        self._client = AsyncStagehand(
-            browserbase_api_key=settings.browserbase_api_key,
-            browserbase_project_id=settings.browserbase_project_id,
+        from playwright.async_api import async_playwright
+        self._playwright = await async_playwright().start()
+        self._browser = await self._playwright.chromium.launch(headless=True)
+        ctx = await self._browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
         )
-        if self._given_session_id:
-            self._session_id = self._given_session_id
-            cdp_url = None
-        else:
-            resp = await self._client.sessions.start(
-                model_name="claude-haiku-4-5-20251001",
-                browserbase_session_create_params={
-                    "projectId": settings.browserbase_project_id,
-                },
-            )
-            self._session_id = resp.id
-            cdp_url = resp.data.cdp_url
-
-        # Connect Playwright for file upload / screenshot
-        await self._connect_playwright(cdp_url)
-
-    async def _connect_playwright(self, cdp_url: str | None = None):
-        try:
-            from playwright.async_api import async_playwright
-            self._playwright = await async_playwright().start()
-            ws_url = cdp_url or (
-                f"wss://connect.browserbase.com?apiKey={settings.browserbase_api_key}"
-                f"&sessionId={self._session_id}"
-            )
-            self._browser = await self._playwright.chromium.connect_over_cdp(ws_url)
-            contexts = self._browser.contexts
-            if contexts:
-                ctx = contexts[0]
-                pages = ctx.pages
-                self._page = pages[0] if pages else await ctx.new_page()
-            else:
-                ctx = await self._browser.new_context()
-                self._page = await ctx.new_page()
-
-            # Remove webdriver fingerprint so LinkedIn/Google don't detect automation
-            await self._page.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
-        except Exception as e:
-            logger.warning(f"Playwright CDP connect failed: {e} — screenshots/uploads unavailable")
+        self._page = await ctx.new_page()
+        await self._page.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        )
 
     async def _stop(self):
-        if self._page:
-            try:
-                await self._page.close()
-            except Exception:
-                pass
-        if self._browser:
-            try:
-                await self._browser.close()
-            except Exception:
-                pass
-        if self._playwright:
-            try:
-                await self._playwright.stop()
-            except Exception:
-                pass
-        if self._client and self._session_id and not self._given_session_id:
-            try:
-                await self._client.sessions.end(self._session_id)
-            except Exception:
-                pass
+        for obj, method in [
+            (self._page, "close"),
+            (self._browser, "close"),
+            (self._playwright, "stop"),
+        ]:
+            if obj:
+                try:
+                    await getattr(obj, method)()
+                except Exception:
+                    pass
 
     @property
     def page(self):
         return self._page
 
-    async def act(self, instruction: str):
-        # Use Playwright for all interaction — Stagehand navigate 500s on LinkedIn
-        if self._page:
-            return await self._page.evaluate(f"() => {{ /* {instruction} */ }}")
-        return await self._client.sessions.act(
-            self._session_id,
-            input={"description": instruction},
-        )
-
-    async def extract(self, instruction: str, schema: type | None = None):
-        kwargs = {"instruction": instruction}
-        if schema:
-            kwargs["schema"] = schema
-        return await self._client.sessions.extract(self._session_id, **kwargs)
-
     async def goto(self, url: str):
-        if self._page:
-            await self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        else:
-            await self._client.sessions.navigate(self._session_id, url=url)
+        await self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
     async def screenshot(self, path: Path):
         if self._page:
             await self._page.screenshot(path=str(path))
-        else:
-            logger.warning(f"No Playwright page — screenshot skipped: {path}")
 
     async def upload_file(self, selector: str, file_path: Path):
         if self._page:
-            file_input = await self._page.query_selector(selector)
-            if file_input:
-                await file_input.set_input_files(str(file_path))
-            else:
-                await self._page.set_input_files('input[type="file"]', str(file_path))
-        else:
-            logger.warning(f"No Playwright page — file upload skipped: {file_path}")
+            el = await self._page.query_selector(selector)
+            target = el or await self._page.query_selector('input[type="file"]')
+            if target:
+                await target.set_input_files(str(file_path))
 
 
 def can_apply_to_company(company_slug: str) -> bool:

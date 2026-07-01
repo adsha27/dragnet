@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))  # for import_eligible_jobs
 
 from sqlalchemy import select
 
@@ -120,6 +121,8 @@ async def main():
                         help="Max applications to process per run (default: 20)")
     parser.add_argument("--ats-only", action="store_true",
                         help="Skip LinkedIn jobs, only process Greenhouse/Lever/Ashby")
+    parser.add_argument("--auto-approve", action="store_true",
+                        help="Skip human approval gate (fully unattended)")
     args = parser.parse_args()
 
     await init_db()
@@ -129,6 +132,16 @@ async def main():
     print(f"Mode: {'DRY RUN' if args.dry_run else 'LIVE'} | Limit: {args.limit}")
     print('='*60)
 
+    # Step 0: Import eligible jobs (idempotent — skips already-imported)
+    from import_eligible_jobs import import_jobs
+    jobs_path = Path("output/eligible_ats_jobs.json") if args.ats_only else Path("output/eligible_jobs.json")
+    if jobs_path.exists():
+        print(f"\n[0/3] Importing eligible jobs from {jobs_path.name}...")
+        inserted, skipped, errored = await import_jobs(jobs_path)
+        print(f"      Inserted: {inserted}  Already in DB: {skipped}  Errors: {errored}")
+    else:
+        print(f"\n[0/3] {jobs_path.name} not found — skipping import (run run_eligibility.py first)")
+
     # Step 1: Tailoring pass
     ats_only = getattr(args, 'ats_only', False)
     print("\n[1/3] Tailoring pass — assigning category resumes...")
@@ -136,10 +149,11 @@ async def main():
         tailored = await run_tailoring_pass(db, limit=args.limit, ats_only=ats_only)
     print(f"      Tailored: {tailored}")
 
-    # Step 2: Human approval gate (auto-approve in dry-run)
+    # Step 2: Human approval gate (auto in dry-run or --auto-approve)
+    auto = args.dry_run or args.auto_approve
     print("\n[2/3] Human approval gate...")
     async with SessionLocal() as db:
-        approved, rejected = await approval_gate(db, limit=args.limit, auto_approve=args.dry_run)
+        approved, rejected = await approval_gate(db, limit=args.limit, auto_approve=auto)
     print(f"      Approved: {approved}  Rejected: {rejected}")
 
     if approved == 0 and not args.dry_run:

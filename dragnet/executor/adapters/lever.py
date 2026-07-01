@@ -1,17 +1,30 @@
 """
-Lever form adapter.
-Lever apply pages are hosted at jobs.lever.co/{slug}/{posting_id}/apply
-Standard fields: name, email, phone, org/company, resume, cover letter, custom questions.
+Lever form adapter using direct Playwright selectors.
+Lever apply pages: jobs.lever.co/{slug}/{id}/apply
+Standard fields: name, email, phone, org, resume, linkedin.
 """
 
 import logging
+import re
 from pathlib import Path
+
+from playwright.async_api import Page
 
 from dragnet.config import settings
 from dragnet.executor.session import BrowserSession
 from dragnet.tailoring.answers import answer_custom_question
+from dragnet.tailoring.unicode_normalize import normalize
 
 logger = logging.getLogger(__name__)
+
+_SELECTORS = {
+    "name":     ['input[name="name"]',     'input[id*="name"]:not([id*="last"]):not([id*="first"])'],
+    "email":    ['input[name="email"]',    'input[type="email"]'],
+    "phone":    ['input[name="phone"]',    'input[type="tel"]'],
+    "org":      ['input[name="org"]',      'input[id*="org"]', 'input[placeholder*="company" i]'],
+    "location": ['input[name="location"]', 'input[id*="location"]'],
+    "linkedin": ['input[name="urls[LinkedIn]"]', 'input[id*="linkedin"]', 'input[placeholder*="linkedin" i]'],
+}
 
 
 async def apply(
@@ -23,46 +36,41 @@ async def apply(
     dry_run: bool = False,
 ) -> dict:
     result = {"success": False, "screenshot": None, "failure_type": None}
+    page = session.page
 
     try:
         await session.goto(apply_url)
-        await session.page.wait_for_load_state("networkidle", timeout=15000)
+        await page.wait_for_load_state("networkidle", timeout=15000)
 
-        page_content = await session.page.content()
-        if "captcha" in page_content.lower():
+        content = await page.content()
+        if "captcha" in content.lower():
             result["failure_type"] = "captcha"
             return result
 
-        # Standard Lever fields
-        await session.act(f"Fill the full name field with '{settings.applicant_name}'")
-        await session.act(f"Fill the email field with '{settings.applicant_email}'")
-        await session.act(f"Fill the phone field with '{settings.applicant_phone}'")
+        await _fill(page, _SELECTORS["name"],     settings.applicant_name)
+        await _fill(page, _SELECTORS["email"],    settings.applicant_email)
+        await _fill(page, _SELECTORS["phone"],    settings.applicant_phone)
+        await _fill(page, _SELECTORS["org"],      "Right Walk Foundation")
+        await _fill(page, _SELECTORS["location"], "Delhi, India")
+        if settings.applicant_linkedin:
+            await _fill(page, _SELECTORS["linkedin"], settings.applicant_linkedin)
+        # Twitter — always blank
+        for sel in ['input[name*="twitter"]', 'input[name="urls[Twitter]"]',
+                    'input[id*="twitter"]', 'input[placeholder*="twitter" i]']:
+            try:
+                el = await page.query_selector(sel)
+                if el and await el.is_visible():
+                    await el.fill("")
+            except Exception:
+                pass
 
-        # Current company / org (optional on Lever)
-        await session.act("If there is a current company or organization field, fill it with 'Right Walk Foundation'")
+        await session.upload_file('input[type="file"]', resume_path)
 
-        # Location
-        await session.act("If there is a location field, fill it with 'Delhi, India'")
-
-        # Resume
-        try:
-            await session.upload_file('input[type="file"]', resume_path)
-        except Exception:
-            await session.act(f"Upload file: {resume_path}")
-
-        # LinkedIn
-        await session.act("If there is a LinkedIn profile URL field, leave it blank or skip")
-
-        # Custom questions
-        custom_questions = await _extract_lever_questions(session)
-        for question_text in custom_questions:
+        for question_text in await _extract_custom_questions(page):
             answer = await answer_custom_question(question_text, posting)
             if answer:
-                await session.act(
-                    f"Find the question '{question_text[:80]}' and fill its answer field with: {answer}"
-                )
+                await _fill_question(page, question_text, answer)
 
-        # Screenshot pre-submit
         screenshot_name = f"{posting.get('id', 'unknown')}_{posting.get('company', 'co')}_preflight.png"
         screenshot_path = settings.screenshots_dir / screenshot_name
         await session.screenshot(screenshot_path)
@@ -72,16 +80,11 @@ async def apply(
             result["success"] = True
             return result
 
-        await session.act("Submit the application form")
-        await session.page.wait_for_load_state("networkidle", timeout=15000)
+        await _click_submit(page)
+        await page.wait_for_load_state("networkidle", timeout=15000)
 
-        content_after = await session.page.content()
-        submitted = any(
-            phrase in content_after.lower()
-            for phrase in ["thank you", "application submitted", "received", "we'll be in touch"]
-        )
-
-        if submitted:
+        content_after = await page.content()
+        if any(p in content_after.lower() for p in ["thank you", "application submitted", "received", "we'll be in touch"]):
             confirm_path = settings.screenshots_dir / screenshot_name.replace("_preflight", "_confirm")
             await session.screenshot(confirm_path)
             result["success"] = True
@@ -97,15 +100,66 @@ async def apply(
     return result
 
 
-async def _extract_lever_questions(session: BrowserSession) -> list[str]:
+async def _fill(page: Page, selectors: list[str], value: str) -> bool:
+    if not value:
+        return False
+    for sel in selectors:
+        try:
+            el = await page.query_selector(sel)
+            if el and await el.is_visible():
+                await el.fill(normalize(value))
+                return True
+        except Exception:
+            continue
+    return False
+
+
+async def _fill_question(page: Page, question_text: str, answer: str):
     try:
-        data = await session.extract(
-            "List all custom question labels in this Lever application form. "
-            "Skip standard fields (name, email, phone, company, location, resume). "
-            "Return question texts only."
-        )
-        if isinstance(data, list):
-            return [str(q) for q in data if q]
+        locator = page.get_by_label(question_text[:80], exact=False)
+        if await locator.count() == 0:
+            return
+        el = locator.first
+        tag = await el.evaluate("el => el.tagName.toLowerCase()")
+        if tag == "select":
+            try:
+                await el.select_option(label=re.compile(answer[:30], re.I))
+            except Exception:
+                pass
+        else:
+            await el.fill(normalize(answer))
     except Exception:
         pass
-    return []
+
+
+async def _extract_custom_questions(page: Page) -> list[str]:
+    return await page.evaluate("""
+        () => {
+            const standard = new Set(['name','email','phone','org','location','resume','linkedin','twitter','github','portfolio','website']);
+            return Array.from(document.querySelectorAll('.application-field label, [class*="field"] label, form label'))
+                .filter(l => {
+                    const f = (l.getAttribute('for') || '').toLowerCase();
+                    const t = l.textContent.trim().toLowerCase();
+                    return !Array.from(standard).some(s => f.includes(s) || t === s);
+                })
+                .map(l => l.textContent.trim())
+                .filter(t => t.length > 5 && t.length < 300);
+        }
+    """)
+
+
+async def _click_submit(page: Page):
+    for sel in [
+        'button[type="submit"]',
+        'input[type="submit"]',
+        'button:has-text("Submit application")',
+        'button:has-text("Submit")',
+        'button:has-text("Apply now")',
+    ]:
+        try:
+            el = await page.query_selector(sel)
+            if el and await el.is_visible():
+                await el.click()
+                return
+        except Exception:
+            continue

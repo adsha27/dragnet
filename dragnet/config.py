@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     # Search
     exa_api_key: str
 
-    # Browser
-    browserbase_api_key: str
-    browserbase_project_id: str
+    # Browser (Browserbase removed; local Playwright used instead)
+    browserbase_api_key: str = ""
+    browserbase_project_id: str = ""
 
     # DB
     database_url: str = "postgresql+asyncpg://postgres:dragnet@localhost:5432/dragnet"

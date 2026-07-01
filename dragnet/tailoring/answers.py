@@ -110,8 +110,42 @@ Answer in under 120 words using only facts above."""
     return answers
 
 
+_SOCIAL_URL_PATTERNS = [
+    "twitter", "x.com", "x handle", "@", "instagram", "facebook",
+    "github", "portfolio", "personal website", "website url",
+    "linkedin url", "linkedin profile",
+]
+
+_NO_ANSWER_PATTERNS = [
+    "twitter", "x.com", "x handle", "instagram", "facebook",
+]
+
+
 async def answer_custom_question(question: str, posting: dict) -> str:
     """Answer a specific ATS question encountered during form filling."""
+    q = question.lower()
+
+    # Never fabricate social handles we don't have
+    if any(p in q for p in _NO_ANSWER_PATTERNS):
+        return ""
+
+    # Preferred/chosen name fields — just return first name
+    if any(p in q for p in ["preferred name", "preferred first name", "name to use", "name you'd prefer", "name throughout"]):
+        return "Aditya"
+
+    # GitHub — return profile URL directly, no LLM needed
+    if "github" in q:
+        return "https://github.com/adsha27"
+
+    # Website / portfolio fields — URL expected, not prose
+    if any(p in q for p in ["portfolio", "personal website", "website url", "personal site", "website"]):
+        return ""
+
+    # LinkedIn URL field — return configured value or blank
+    if "linkedin" in q and any(w in q for w in ["url", "profile", "link"]):
+        from dragnet.config import settings
+        return settings.applicant_linkedin or ""
+
     facts_context = facts_as_context_string()
 
     prompt = f"""JOB: {posting.get('company', '')} - {posting.get('title', '')}
