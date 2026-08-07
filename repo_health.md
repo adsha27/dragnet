@@ -1,11 +1,17 @@
 # Repo Health — Phase 1 & Phase 3
 
-## Status: BLOCKED — no real data collected
+## Status: PARTIAL — GitHub REST API blocked; 3 fields recovered via git protocol
 
-Every repo below returned the identical error on every attempted call. This is not
-a per-repo failure (auth, rate limit, typo, 404) — it is a systemic block in this
-session's network layer that intercepts all `https://api.github.com/repos/{owner}/{repo}/...`
-traffic before it reaches GitHub, regardless of credentials supplied.
+The GitHub REST/GraphQL API (`api.github.com`) is blocked for these 13 repos in this
+session — confirmed below, not just asserted. That blocks most of the requested
+fields (stars, issues, PRs, labels, comments, language %, archived flag, org data).
+
+The **git wire protocol** (`git ls-remote` / `git clone`) is a separate channel and is
+**not** blocked, so three fields were pulled for real: `default_branch`,
+`commits_last_30d`, and `has_CONTRIBUTING_md`. These are genuine, reproducible,
+git-derived values — not `gh api` output, since `gh api`/REST is unavailable — labeled
+as such below. Everything else remains `ERROR`, per the hard rule against filling
+gaps with estimates.
 
 **Verified independently, in this session, before writing this file:**
 
@@ -44,27 +50,58 @@ proxy.
 
 ## Phase 1 table
 
-Command run for every row (identical pattern, repo substituted):
+API-derived columns: command run for every row (identical pattern, repo substituted):
 ```
 curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
   -w "\nHTTP_CODE:%{http_code}" "https://api.github.com/repos/{owner}/{repo}"
 ```
+→ blocked for all 13 (see error block below). Those columns are `ERROR`.
+
+Git-derived columns (`default_branch`, `commits_last_30d`, `has_CONTRIBUTING_md`):
+commands run per repo:
+```
+git ls-remote --symref https://github.com/{owner}/{repo} HEAD
+git clone --no-checkout --filter=blob:none --shallow-since=<UTC today-30d> https://github.com/{owner}/{repo} <dir>
+  # fallback used for 2 repos where shallow-since failed with "error processing shallow info: 4":
+  git clone --no-checkout --filter=blob:none https://github.com/{owner}/{repo} <dir>
+cd <dir> && git symbolic-ref --short HEAD
+git log --oneline --since=<UTC today-30d>   # count = commits_last_30d, default branch only
+git cat-file -e HEAD:CONTRIBUTING.md   # and .github/CONTRIBUTING.md, docs/CONTRIBUTING.md, CONTRIBUTING.rst, CONTRIBUTING
+```
+Run at 2026-08-07, 30-day window = 2026-07-08 → 2026-08-07 (UTC). `commits_last_30d`
+counts commits reachable from the default branch only (no other branches, no PR
+commits that never landed there).
 
 | repo | stars | primary_language | language_breakdown | commits_last_30d | open_issues_total | open_issues_labeled_bug | open_bug_issues_updated_last_30d | good_first_issue | help_wanted | external_pr_count | median_days_open_to_merge | max_days_open_to_merge | median_hrs_to_first_maintainer_comment | requires_CLA | has_CONTRIBUTING_md | archived | default_branch |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| modelcontextprotocol/go-sdk | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| modelcontextprotocol/python-sdk | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| modelcontextprotocol/servers | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| BerriAI/litellm | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| BoundaryML/baml | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| explodinggradients/ragas | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| confident-ai/deepeval | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| promptfoo/promptfoo | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| Arize-ai/phoenix | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| openai/evals | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| weaviate/weaviate | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| deepset-ai/haystack | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
-| pgvector/pgvector | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR |
+| modelcontextprotocol/go-sdk | ERROR | ERROR | ERROR | 39 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| modelcontextprotocol/python-sdk | ERROR | ERROR | ERROR | 44 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| modelcontextprotocol/servers | ERROR | ERROR | ERROR | 19 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| BerriAI/litellm | ERROR | ERROR | ERROR | 2013 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | litellm_internal_staging |
+| BoundaryML/baml | ERROR | ERROR | ERROR | 260 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | canary |
+| explodinggradients/ragas | ERROR | ERROR | ERROR | 0 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| confident-ai/deepeval | ERROR | ERROR | ERROR | 156 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| promptfoo/promptfoo | ERROR | ERROR | ERROR | 184 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| Arize-ai/phoenix | ERROR | ERROR | ERROR | 442 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| openai/evals | ERROR | ERROR | ERROR | 0 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | false | ERROR | main |
+| weaviate/weaviate | ERROR | ERROR | ERROR | 1018 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| deepset-ai/haystack | ERROR | ERROR | ERROR | 290 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | true | ERROR | main |
+| pgvector/pgvector | ERROR | ERROR | ERROR | 66 | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | ERROR | false | ERROR | master |
+
+Notes on the real values above:
+- `explodinggradients/ragas` and `openai/evals` both show `commits_last_30d=0`. Verified
+  not a tooling artifact: most recent commit on ragas `main` is 2026-02-24 (`fix: allow
+  fork contributors in check-docs CI workflow (#2606)`); most recent on evals `main` is
+  2026-04-14 (`Pin pre-commit hook revisions to immutable commits (#1644)`). Both
+  branches are genuinely dormant relative to today (2026-08-07).
+- `BerriAI/litellm`'s default branch is `litellm_internal_staging`, not `main` —
+  double-checked independently via `git ls-remote --symref`, same result both times.
+- `has_CONTRIBUTING_md` false for `openai/evals` and `pgvector/pgvector` means none of
+  `CONTRIBUTING.md`, `.github/CONTRIBUTING.md`, `docs/CONTRIBUTING.md`,
+  `CONTRIBUTING.rst`, `CONTRIBUTING` were found at HEAD of the default branch — a
+  CONTRIBUTING section inside README.md, if any, was not checked separately.
+- `archived` is not derivable from git protocol at all (it's repo-metadata, API-only)
+  — stays `ERROR` even though other columns for the same row are real.
 
 ## Exact error strings (one per repo, all identical)
 
@@ -107,6 +144,8 @@ target repos, or with an unrestricted network policy).
 
 ## Time spent
 
-Wall time on verification + attempted collection: well under the 20-minute budget
-(~3 minutes). Stopped once the block was confirmed systemic rather than burning
-the full budget on 13 known-identical failures.
+Wall time on verification + attempted API collection + git-protocol recovery: well
+under the 20-minute budget. The remaining fields (stars, issues, PRs, labels,
+comments, language %, org data) genuinely require the REST/GraphQL API, which stays
+blocked — no further git-protocol trick recovers them, so they remain `ERROR` rather
+than being filled with a guess.

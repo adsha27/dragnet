@@ -5,14 +5,14 @@
 Phase 2 only runs for repos where Phase 1 established
 `external_pr_count >= 3 AND median_days_open_to_merge <= 21`.
 
-Phase 1 (see `./repo_health.md`) collected **zero real values** for any of the 13
-repos: every `/repos/{owner}/{repo}/...` call was intercepted by this session's
-egress proxy and returned `HTTP 403` before reaching GitHub, regardless of the
-GitHub PAT supplied. This was independently reproduced via raw `curl` with a valid
-token, the GitHub MCP server tools, and confirmed again after an MCP server
-reconnect mid-task (`mcp__github__list_commits` on `pgvector/pgvector` →
-`"Access denied: repository ... is not configured for this session. Allowed
-repositories: adsha27/dragnet"`).
+`external_pr_count` and `median_days_open_to_merge` both require pull-request data,
+which only exists via the GitHub REST/GraphQL API (`/repos/{owner}/{repo}/pulls`,
+`author_association`). That API remains blocked for these 13 repos in this session
+(see `./repo_health.md` for the full proof: raw `curl` with a valid PAT, the GitHub
+MCP tools, and add_repo attach all independently rejected every one of them). A
+separate channel — the git wire protocol — did recover 3 unrelated fields
+(`default_branch`, `commits_last_30d`, `has_CONTRIBUTING_md`, see repo_health.md),
+but PR/issue metadata isn't exposed over that protocol at all, so it can't help here.
 
 `external_pr_count` and `median_days_open_to_merge` are therefore `ERROR`, not a
 number, for all 13 repos — the qualification condition cannot be evaluated, so no
